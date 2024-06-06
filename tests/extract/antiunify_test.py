@@ -338,6 +338,27 @@ class AntiUnifyTest(GenericExtractTest):
             self.run_extract(code), (post_extract_expected, post_extracted)
         )
 
+    def test_temp(self):
+        code = """
+        def f():
+            y, x = 2
+            __start_extract__
+            {__metavariable__, __m0, x(lambda: y)}
+            __end_extract__
+            y, x = 2
+        def g():
+            y, x = 2
+            __start_extract__
+            {__metavariable__, __m0, x}
+            __end_extract__
+            y, x = 2
+        """
+
+        x, y = self.run_extract(code)
+        print(x)
+        print(y)
+        1/0
+
 
 class AntiUnifyRealisticTest(GenericRewriteRealisticTest):
     def run_extract(
