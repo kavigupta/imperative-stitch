@@ -22,6 +22,12 @@ class PartialAbstraction:
     symvars_syms: list[str]
     choicevar_syms: list[str]
 
+    @property
+    def arity(self) -> int:
+        return (
+            len(self.metavar_syms) + len(self.symvars_syms) + len(self.choicevar_syms)
+        )
+
     def extract_symvars(self, rewritten: list[ns.SExpression]) -> list[ns.SExpression]:
         """
         Remove "metavariables" that are symbols (symbol Name) to the symvar_syms.
@@ -58,6 +64,71 @@ class PartialAbstraction:
             )
             for rewr in rewritten
         ]
+
+    def extract_choicevars(
+        self, rewritten: list[ns.SExpression]
+    ) -> list[ns.SExpression]:
+        assert not self.choicevar_syms, "Choicevars should be empty at this point."
+        target_vars = sorted(
+            {
+                x.symbol
+                for x in ns.postorder(self.body, leaves=False)
+                if is_variable(x.symbol)
+            }
+        )
+        assert all(
+            x.startswith("#") for x in target_vars
+        ), "only metavariables should appear left of an App"
+        indices = [None] * self.arity
+        replace = {}
+        new_metavars = []
+        new_choicevars = []
+        current_idx = 0
+        num_non_choicevars = (
+            len(self.metavar_syms) + len(self.symvars_syms) - len(target_vars)
+        )
+        for i, sym in enumerate(self.metavar_syms):
+            ivar = f"#{i}"
+            if ivar in target_vars:
+                replace[ivar] = f"?{len(new_choicevars)}"
+                indices[num_non_choicevars + len(new_choicevars)] = i
+                new_choicevars.append(sym)
+            else:
+                replace[ivar] = f"#{current_idx}"
+                new_metavars.append(sym)
+                indices[current_idx] = i
+                current_idx += 1
+        for i, _ in enumerate(self.symvars_syms):
+            indices[current_idx] = i + len(self.metavar_syms)
+            current_idx += 1
+        self.body = self.replace_leaves(self.body, replace)
+
+        def eta_longify(exp: ns.SExpression) -> ns.SExpression:
+            if not isinstance(exp, ns.SExpression):
+                return exp
+            children = [eta_longify(child) for child in exp.children]
+            if is_variable(exp.symbol):
+                assert exp.symbol.startswith("?"), "Choicevars should start with '?'"
+                return ns.SExpression("/seq", [exp.symbol, *children])
+            return ns.SExpression(exp.symbol, children)
+
+        self.body = eta_longify(self.body)
+
+        self.metavar_syms = new_metavars
+        self.choicevar_syms = new_choicevars
+        return [self.reorder_call_variables(rewr, indices) for rewr in rewritten]
+
+    # def handle_sequence_before_call(
+    #     self, rewritten: list[ns.SExpression]
+    # ) -> list[ns.SExpression]:
+    #     """
+    #     Handle sequences before calls by replacing the sequence with a subsequence
+    #     """
+    #     if self.body.symbol != "/seq" and not is_variable(self.body.symbol):
+    #         return rewritten
+    #     print(self)
+    #     1 / 0
+    #     return rewritten
 
     def to_abstraction(self) -> Abstraction:
         return Abstraction.of(
@@ -98,7 +169,7 @@ class PartialAbstraction:
         children = [
             self.replace_leaves(child, replacements) for child in s_exp.children
         ]
-        return ns.SExpression(s_exp.symbol, children)
+        return ns.SExpression(replacements.get(s_exp.symbol, s_exp.symbol), children)
 
 
 def process_rust_stitch(
@@ -137,6 +208,8 @@ def compute_abstraction(
     s_exprs = rewritten + [ns.parse_s_expression(x.body) for x in other_abstractions]
 
     s_exprs = partial.extract_symvars(s_exprs)
+    s_exprs = partial.extract_choicevars(s_exprs)
+    # s_exprs = partial.handle_sequence_before_call(s_exprs)
 
     rewritten = s_exprs[: len(rewritten)]
 
@@ -150,3 +223,10 @@ def compute_abstraction(
         other_abstr_new.append(other_abstr)
 
     return partial.to_abstraction(), rewritten, other_abstr_new
+
+
+def is_variable(symbol: str) -> bool:
+    """
+    Check if the symbol is a variable.
+    """
+    return symbol.startswith("%") or symbol.startswith("#") or symbol.startswith("?")
