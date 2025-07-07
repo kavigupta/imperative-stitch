@@ -20,6 +20,7 @@ def compress_stitch(pythons, **kwargs) -> stitch_core.CompressionResult:
         valid_metavars='["S","E","seqS"]',
         valid_roots='["S","E","seqS"]',
         tdfa_non_eta_long_states='{"seqS":"S"}',
+        symvar_prefix="&",
         **kwargs,
     )
     print("compressed", compressed.abstractions)
