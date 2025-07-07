@@ -43,6 +43,36 @@ def run_compression_for_testing(code, **kwargs):
 
 class TestConversion(unittest.TestCase):
 
+    def test_if_with_no_else(self):
+        code = [
+            dedent(
+                """
+                if x > 0:
+                    y = 2
+                """
+            ),
+            dedent(
+                """
+                if x > 0:
+                    y = 2
+                """
+            ),
+        ]
+        _, abstractions, rewritten = run_compression_for_testing(
+            code, iterations=1, max_arity=10
+        )
+        self.assertEqual(
+            abstractions,
+            ["if x > 0:\n    %1 = 2"],
+        )
+        self.assertEqual(
+            rewritten,
+            [
+                canonicalize("fn_0(__ref__(y))"),
+                canonicalize("fn_0(__ref__(y))"),
+            ],
+        )
+
     def test_metavar_symvar_single(self):
         code = [
             dedent(
@@ -433,103 +463,210 @@ class TestConversion(unittest.TestCase):
             ],
         )
 
-    # TODO add test where all choicevars have the same length
+    def test_sequence_rooted_not_at_top(self):
+        code = [
+            dedent(
+                """
+                distraction = 2
+                function(x, y, z)
+                2 + 3 + 4
+                """
+            ),
+            dedent(
+                """
+                distraction2 * 81
+                function(x, y, z2)
+                2 + 3 + 5
+                """
+            ),
+            dedent(
+                """
+                1 / distraction3
+                function(x, y, z3)
+                2 + 3 + 6
+                """
+            ),
+        ]
+        [abstr], [abstraction_text], rewritten = run_compression_for_testing(
+            code, iterations=1, max_arity=3
+        )
+        self.assertEqual(
+            abstraction_text,
+            dedent(
+                """
+                function(x, y, #1)
+                2 + 3 + #0
+                """
+            ).strip(),
+        )
+        self.assertEqual(
+            abstr.dfa_annotation,
+            {"root": "seqS", "metavars": ["E", "E"], "symvars": [], "choicevars": []},
+        )
+        self.assertEqual(
+            rewritten,
+            [
+                canonicalize(
+                    """
+                    distraction = 2
+                    fn_0(__code__('4'), __code__('z'))
+                    """
+                ),
+                canonicalize(
+                    """
+                    distraction2 * 81
+                    fn_0(__code__('5'), __code__('z2'))
+                    """
+                ),
+                canonicalize(
+                    """
+                    1 / distraction3
+                    fn_0(__code__('6'), __code__('z3'))
+                    """
+                ),
+            ],
+        )
 
-    # def test_sequence_rooted_not_at_top(self):
-    #     code = [
-    #         dedent(
-    #             """
-    #             distraction = 2
-    #             function(x, y, z)
-    #             2 + 3 + 4
-    #             """
-    #         ),
-    #         dedent(
-    #             """
-    #             distraction2 * 81
-    #             function(x, y, z2)
-    #             2 + 3 + 4
-    #             """
-    #         ),
-    #         dedent(
-    #             """
-    #             1 / distraction3
-    #             function(x, y, z3)
-    #             2 + 3 + 5
-    #             """
-    #         ),
-    #     ]
-    #     [abstr], [abstraction_text], rewritten = run_compression_for_testing(
-    #         code, iterations=1
-    #     )
-    #     self.assertEqual(
-    #         abstraction_text,
-    #         dedent(
-    #             """
-    #             function(x, y, #1)
-    #             2 + 3 + #0
-    #             """
-    #         ).strip(),
-    #     )
-    #     self.assertEqual(
-    #         abstr.dfa_annotation,
-    #         {"root": "seqS", "metavars": ["E", "E"], "symvars": [], "choicevars": []},
-    #     )
-    #     self.assertEqual(
-    #         rewritten,
-    #         [
-    #             canonicalize("fn_0(__code__('4'), __code__('z'))"),
-    #             canonicalize("fn_0(__code__('4'), __code__('z2'))"),
-    #             canonicalize("fn_0(__code__('5'), __code__('z3'))"),
-    #         ],
-    #     )
+    def test_sequence_rooted_not_at_top_choicevar(self):
+        code = [
+            dedent(
+                """
+                distraction = 2
+                x[2] = 4
+                function(x, y, z)
+                2 + 3 + 4
+                """
+            ),
+            dedent(
+                """
+                distraction2 * 81
+                function(x, y, z2)
+                2 + 3 + 5
+                """
+            ),
+            dedent(
+                """
+                u = 2
+                function(x, y, z3)
+                2 + 3 + 6
+                """
+            ),
+        ]
+        [abstr], [abstraction_text], rewritten = run_compression_for_testing(
+            code, iterations=1, max_arity=10
+        )
+        self.assertEqual(
+            abstraction_text,
+            dedent(
+                """
+                function(x, y, #1)
+                2 + 3 + #0
+                """
+            ).strip(),
+        )
+        self.assertEqual(
+            abstr.dfa_annotation,
+            {"root": "seqS", "metavars": ["E", "E"], "symvars": [], "choicevars": []},
+        )
+        self.assertEqual(
+            rewritten,
+            [
+                canonicalize(
+                    """
+                    distraction = 2
+                    x[2] = 4
+                    fn_0(__code__('4'), __code__('z'))
+                    """
+                ),
+                canonicalize(
+                    """
+                    distraction2 * 81
+                    fn_0(__code__('5'), __code__('z2'))
+                    """
+                ),
+                canonicalize(
+                    """
+                    u = 2
+                    fn_0(__code__('6'), __code__('z3'))
+                    """
+                ),
+            ],
+        )
 
-    # def test_sequence_rooted_not_at_top_multi(self):
-    #     code = [
-    #         dedent(
-    #             """
-    #             abc
-    #             distraction = 2
-    #             function(x, y, z)
-    #             2 + 3 + 4
-    #             """
-    #         ),
-    #         dedent(
-    #             """
-    #             distraction2 * 81
-    #             function(x, y, z2)
-    #             2 + 3 + 4
-    #             """
-    #         ),
-    #         dedent(
-    #             """
-    #             1 / distraction3
-    #             function(x, y, z3)
-    #             2 + 3 + 5
-    #             """
-    #         ),
-    #     ]
-    #     [abstr], [abstraction_text], rewritten = run_compression_for_testing(
-    #         code, iterations=1
-    #     )
-    #     self.assertEqual(
-    #         abstraction_text,
-    #         dedent(
-    #             """
-    #             function(x, y, #1)
-    #             2 + 3 + #0
-    #             """
-    #         ).strip(),
-    #     )
-    #     self.assertEqual(
-    #         abstr.dfa_annotation,
-    #         {"root": "seqS", "metavars": ["E", "E"], "symvars": [], "choicevars": []},
-    #     )
-    #     self.assertEqual(
-    #         rewritten,
-    #         [
-    #             canonicalize("fn_0(__code__('4'), __code__('z'))"),
-    #             canonicalize("fn_0(__code__('4'), __code__('z2'))"),
-    #             canonicalize("fn_0(__code__('5'), __code__('z3'))"),
-    #         ],
-    #     )
+    def test_sequence_rooted_not_at_top_choicevar_used_internally(self):
+        code = [
+            dedent(
+                """
+                distraction = 2
+                x[2] = 4
+                function(x, y, z)
+                2 + 3 + 4
+                if x:
+                    distraction = 2
+                    x[2] = 4
+
+                """
+            ),
+            dedent(
+                """
+                distraction2 * 81
+                function(x, y, z2)
+                2 + 3 + 5
+                if x:
+                    distraction2 * 81
+                """
+            ),
+            dedent(
+                """
+                u = 2
+                function(x, y, z3)
+                2 + 3 + 6
+                if x:
+                    u = 2
+                """
+            ),
+        ]
+        [abstr], [abstraction_text], rewritten = run_compression_for_testing(
+            code, iterations=1, max_arity=10
+        )
+        self.assertEqual(
+            abstraction_text,
+            dedent(
+                """
+                ?0
+                function(x, y, #1)
+                2 + 3 + #0
+                if x:
+                    ?0
+                """
+            ).strip(),
+        )
+        self.assertEqual(
+            abstr.dfa_annotation,
+            {
+                "root": "seqS",
+                "metavars": ["E", "E"],
+                "symvars": [],
+                "choicevars": ["seqS"],
+            },
+        )
+        self.assertEqual(
+            rewritten,
+            [
+                canonicalize(
+                    """
+                    fn_0(__code__('4'), __code__('z'), __code__('distraction = 2\\nx[2] = 4'))
+                    """
+                ),
+                canonicalize(
+                    """
+                    fn_0(__code__('5'), __code__('z2'), __code__('distraction2 * 81'))
+                    """
+                ),
+                canonicalize(
+                    """
+                    fn_0(__code__('6'), __code__('z3'), __code__('u = 2'))
+                    """
+                ),
+            ],
+        )
