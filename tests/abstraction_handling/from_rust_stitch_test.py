@@ -670,3 +670,69 @@ class TestConversion(unittest.TestCase):
                 ),
             ],
         )
+
+    def test_sequence_with_suffix(self):
+        code = [
+            dedent(
+                """
+                function(x, y, z)
+                2 + 3 + 4
+                distraction = 2
+                x[2] = 4
+                """
+            ),
+            dedent(
+                """
+                function(x, y, z2)
+                2 + 3 + 5
+                distraction2 * 81
+                """
+            ),
+            dedent(
+                """
+                function(x, y, z3)
+                2 + 3 + 6
+                u = 2
+                """
+            ),
+        ]
+        [abstr], [abstraction_text], rewritten = run_compression_for_testing(
+            code, iterations=1, max_arity=10
+        )
+        self.assertEqual(
+            abstraction_text,
+            dedent(
+                """
+                function(x, y, #1)
+                2 + 3 + #0
+                """
+            ).strip(),
+        )
+        self.assertEqual(
+            abstr.dfa_annotation,
+            {"root": "seqS", "metavars": ["E", "E"], "symvars": [], "choicevars": []},
+        )
+        self.assertEqual(
+            rewritten,
+            [
+                canonicalize(
+                    """
+                    fn_0(__code__('4'), __code__('z'))
+                    distraction = 2
+                    x[2] = 4
+                    """
+                ),
+                canonicalize(
+                    """
+                    fn_0(__code__('5'), __code__('z2'))
+                    distraction2 * 81
+                    """
+                ),
+                canonicalize(
+                    """
+                    fn_0(__code__('6'), __code__('z3'))
+                    u = 2
+                    """
+                ),
+            ],
+        )

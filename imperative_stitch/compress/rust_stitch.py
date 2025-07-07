@@ -48,6 +48,33 @@ class PartialAbstraction:
         rewritten = [handle_0_arity_leaves(rewr) for rewr in rewritten]
         return rewritten
 
+    def handle_rooted_non_eta_long(
+        self, rewritten: list[ns.SExpression]
+    ) -> list[ns.SExpression]:
+        def handle_rooted_non_eta_long(
+            exp: ns.SExpression,
+        ) -> ns.SExpression:
+            if not isinstance(exp, ns.SExpression):
+                return exp
+            children = [handle_rooted_non_eta_long(child) for child in exp.children]
+            if exp.symbol == self.name:
+                if len(children) == self.arity:
+                    return ns.SExpression(exp.symbol, children)
+                assert self.root_sym == "seqS", "only valid non-eta-long root is seqS"
+                return ns.SExpression(
+                    "/seq",
+                    [
+                        ns.SExpression(
+                            "/splice",
+                            [ns.SExpression(exp.symbol, children[: self.arity])],
+                        ),
+                        *children[self.arity :],
+                    ],
+                )
+            return ns.SExpression(exp.symbol, children)
+
+        return [handle_rooted_non_eta_long(rewr) for rewr in rewritten]
+
     def extract_symvars(self, rewritten: list[ns.SExpression]) -> list[ns.SExpression]:
         """
         Remove "metavariables" that are symbols (symbol Name) to the symvar_syms.
@@ -322,6 +349,7 @@ def compute_abstraction(
     s_exprs = rewritten + [ns.parse_s_expression(x.body) for x in other_abstractions]
 
     s_exprs = partial.handle_0_arity_leaves(s_exprs)
+    s_exprs = partial.handle_rooted_non_eta_long(s_exprs)
     s_exprs = partial.extract_symvars(s_exprs)
     s_exprs = partial.extract_choicevars(s_exprs)
     s_exprs = partial.handle_variables_at_beginning(s_exprs)
