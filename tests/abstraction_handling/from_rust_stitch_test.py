@@ -1,31 +1,15 @@
 import ast
+import json
 from textwrap import dedent
 import unittest
 import stitch_core
 import neurosym as ns
 
 from imperative_stitch.compress.manipulate_abstraction import abstraction_calls_to_stubs
-from imperative_stitch.compress.rust_stitch import process_rust_stitch
+from imperative_stitch.compress.rust_stitch import compress_stitch
 from imperative_stitch.parser import converter
 from tests.utils import canonicalize
 
-
-def compress_stitch(pythons, **kwargs) -> stitch_core.CompressionResult:
-    s_exps = [ns.python_to_s_exp(code_snippet) for code_snippet in pythons]
-    print("s_exps", s_exps)
-    compressed = stitch_core.compress(
-        s_exps,
-        cost_prim='{"Module":0,"Name":0,"Load":0,"Store":0,"None":0,"list":0,"nil":0,"semi":0,"Constant":0,"Attribute":0,"_slice_content":0,"_slice_slice":0,"_slice_tuple":0,"_starred_content":0,"_starred_starred":0,"/choiceseq":0,"Subscript":0,"Expr":0,"Call":0,"Assign":0,"BinOp":0}',
-        tdfa_json_path="../Stitch.jl/data_for_testing/dfa_imp.json",
-        tdfa_root="M",
-        valid_metavars='["S","E","seqS"]',
-        valid_roots='["S","E","seqS"]',
-        tdfa_non_eta_long_states='{"seqS":"S"}',
-        symvar_prefix="&",
-        **kwargs,
-    )
-    print("compressed", compressed.abstractions)
-    return process_rust_stitch(compressed)
 
 
 def run_compression_for_testing(code, **kwargs):

@@ -1,5 +1,6 @@
 import copy
 from dataclasses import dataclass
+import json
 
 import neurosym as ns
 import stitch_core
@@ -373,3 +374,52 @@ def is_variable(symbol: str) -> bool:
     Check if the symbol is a variable.
     """
     return symbol.startswith("%") or symbol.startswith("#") or symbol.startswith("?")
+
+
+def compress_stitch(pythons, **kwargs) -> CompressionResult:
+    s_exps = [ns.python_to_s_exp(code_snippet) for code_snippet in pythons]
+    cost_prim = {
+        "Module": 0,
+        "Name": 0,
+        "Load": 0,
+        "Store": 0,
+        "None": 0,
+        "list": 0,
+        "nil": 0,
+        "semi": 0,
+        "Constant": 0,
+        "Attribute": 0,
+        "_slice_content": 0,
+        "_slice_slice": 0,
+        "_slice_tuple": 0,
+        "_starred_content": 0,
+        "_starred_starred": 0,
+        "/choiceseq": 0,
+        "Subscript": 0,
+        "Expr": 0,
+        "Call": 0,
+        "Assign": 0,
+        "AugAssign": 0,
+        "BinOp": 0,
+        "UnaryOp": 0,
+        "/seq": 0,
+        "FunctionDef": 0,
+        "arguments": 0,
+        "arg": 0,
+        "Compare": 0,
+        "Import": 0,
+        "Alias": 0,
+    }
+    compressed = stitch_core.compress(
+        s_exps,
+        cost_prim=json.dumps(cost_prim).replace(" ", ""),
+        tdfa_json_path="../Stitch.jl/data_for_testing/dfa_imp.json",
+        tdfa_root="M",
+        valid_metavars='["S","E","seqS"]',
+        valid_roots='["S","E","seqS"]',
+        tdfa_non_eta_long_states='{"seqS":"S"}',
+        symvar_prefix="&",
+        **kwargs,
+    )
+    print(compressed.abstractions)
+    return process_rust_stitch(compressed)
