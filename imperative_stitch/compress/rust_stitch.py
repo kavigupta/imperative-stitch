@@ -105,11 +105,14 @@ class PartialAbstraction:
 
         def eta_longify(exp: ns.SExpression) -> ns.SExpression:
             if not isinstance(exp, ns.SExpression):
+                assert isinstance(exp, str), "Expected a string or SExpression"
+                if exp.startswith("?"):
+                    return ns.SExpression("/seq", (exp,))
                 return exp
             children = [eta_longify(child) for child in exp.children]
             if is_variable(exp.symbol):
                 assert exp.symbol.startswith("?"), "Choicevars should start with '?'"
-                return ns.SExpression("/seq", [exp.symbol, *children])
+                return ns.SExpression("/seq", (exp.symbol, *children))
             return ns.SExpression(exp.symbol, children)
 
         self.body = eta_longify(self.body)

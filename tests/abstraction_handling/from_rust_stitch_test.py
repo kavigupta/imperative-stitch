@@ -1,3 +1,4 @@
+import ast
 from textwrap import dedent
 import unittest
 import stitch_core
@@ -31,13 +32,13 @@ def run_compression_for_testing(code, **kwargs):
     result = compress_stitch(code, **kwargs)
     abstr_dict = {x.name: x for x in result.abstractions}
     abstractions = [
-        abstraction_calls_to_stubs(x.body_with_variable_names(), abstr_dict).to_python()
+        abstraction_calls_to_stubs(x.body_with_variable_names(), abstr_dict)
         for x in result.abstractions
     ]
     rewritten = [converter.s_exp_to_python_ast(x) for x in result.rewritten]
     rewritten = [abstraction_calls_to_stubs(x, abstr_dict) for x in rewritten]
     rewritten = [x.to_python() for x in rewritten]
-    return result.abstractions, abstractions, rewritten
+    return result.abstractions, [x.to_python() for x in abstractions], rewritten
 
 
 class TestConversion(unittest.TestCase):
@@ -355,6 +356,79 @@ class TestConversion(unittest.TestCase):
                 ),
                 canonicalize(
                     "fn_0(__code__('5'), __code__('25'), __code__('1002'), __ref__(y), __code__('f(2)\\ndel y'))"
+                ),
+            ],
+        )
+
+    def test_choicevar_used_as_rooted(self):
+        code = [
+            dedent(
+                """
+                if x > 1000:
+                    y = 2
+                    y = 23
+                else:
+                    y = 2
+                """
+            ),
+            dedent(
+                """
+                if x > 1001:
+                    a = 7
+                    y = 2
+                    y = 24
+                else:
+                    a = 7
+                    y = 2
+                """
+            ),
+            dedent(
+                """
+                if x > 1002:
+                    f(2)
+                    del y
+                    y = 25
+                else:
+                    f(2)
+                    del y
+                """
+            ),
+        ]
+        [abstr], [abstraction_text], rewritten = run_compression_for_testing(
+            code, iterations=1, max_arity=10
+        )
+        self.assertEqual(
+            abstraction_text,
+            dedent(
+                """
+                if x > #1:
+                    ?0
+                    %1 = #0
+                else:
+                    ?0
+                """
+            ).strip(),
+        )
+        self.assertEqual(
+            abstr.dfa_annotation,
+            {
+                "root": "seqS",
+                "metavars": ["E", "E"],
+                "symvars": ["Name"],
+                "choicevars": ["seqS"],
+            },
+        )
+        self.assertEqual(
+            rewritten,
+            [
+                canonicalize(
+                    "fn_0(__code__('23'), __code__('1000'), __ref__(y), __code__('y = 2'))"
+                ),
+                canonicalize(
+                    "fn_0(__code__('24'), __code__('1001'), __ref__(y), __code__('a = 7\\ny = 2'))"
+                ),
+                canonicalize(
+                    "fn_0(__code__('25'), __code__('1002'), __ref__(y), __code__('f(2)\\ndel y'))"
                 ),
             ],
         )
