@@ -5,11 +5,12 @@ from textwrap import dedent
 
 import neurosym as ns
 import stitch_core
+from parameterized import parameterized
 
 from imperative_stitch.compress.manipulate_abstraction import abstraction_calls_to_stubs
 from imperative_stitch.compress.rust_stitch import compress_stitch
 from imperative_stitch.parser import converter
-from tests.utils import canonicalize
+from tests.utils import canonicalize, expand_with_slow_tests, small_set_examples
 
 
 def run_compression_for_testing(code, **kwargs):
@@ -21,6 +22,8 @@ def run_compression_for_testing(code, **kwargs):
     ]
     rewritten = [converter.s_exp_to_python_ast(x) for x in result.rewritten]
     rewritten = [abstraction_calls_to_stubs(x, abstr_dict) for x in rewritten]
+    for x in result.abstractions:
+        print(ns.render_s_expression(x.body.to_ns_s_exp()))
     rewritten = [x.to_python() for x in rewritten]
     return result.abstractions, [x.to_python() for x in abstractions], rewritten
 
@@ -719,4 +722,29 @@ class TestConversion(unittest.TestCase):
                     """
                 ),
             ],
+        )
+
+    def test_no_abstractions(self):
+        code = [
+            canonicalize(
+                """
+                if x:
+                    y
+                """
+            ),
+            canonicalize(
+                """
+                1 + 2
+                """
+            ),
+        ]
+        [], [], rewritten = run_compression_for_testing(
+            code, iterations=3, max_arity=10
+        )
+        self.assertEqual(rewritten, code)
+
+    @expand_with_slow_tests(200, first_fast=3)
+    def test_smoke(self, seed):
+        run_compression_for_testing(
+            small_set_examples()[seed::200], iterations=3, max_arity=3
         )

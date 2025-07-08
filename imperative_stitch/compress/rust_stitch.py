@@ -7,6 +7,7 @@ import neurosym as ns
 import stitch_core
 
 from imperative_stitch.compress.abstraction import Abstraction
+from imperative_stitch.utils.classify_nodes import SYMBOL_TYPES
 
 
 @dataclass
@@ -26,26 +27,6 @@ class PartialAbstraction:
     @property
     def arity(self) -> int:
         return len(self.symbols_each)
-
-    def handle_0_arity_leaves(
-        self, rewritten: list[ns.SExpression]
-    ) -> list[ns.SExpression]:
-        def handle_0_arity_leaves(
-            exp: ns.SExpression,
-        ) -> ns.SExpression:
-            if isinstance(exp, ns.SExpression):
-                return ns.SExpression(
-                    exp.symbol,
-                    [handle_0_arity_leaves(child) for child in exp.children],
-                )
-            assert isinstance(exp, str), "Expected a string or SExpression"
-            if exp in {"/seq"}:
-                return ns.SExpression(exp, [])
-            return exp
-
-        self.body = handle_0_arity_leaves(self.body)
-        rewritten = [handle_0_arity_leaves(rewr) for rewr in rewritten]
-        return rewritten
 
     def handle_rooted_non_eta_long(
         self, rewritten: list[ns.SExpression]
@@ -82,7 +63,7 @@ class PartialAbstraction:
         """
 
         for i, sym in enumerate(self.symbols_each):
-            if sym != "Name":
+            if sym not in SYMBOL_TYPES:
                 continue
             assert self.kinds_each[i] == "#", "Should be a metavariable at this point."
             self.kinds_each[i] = "%"
@@ -271,14 +252,34 @@ def process_rust_stitch(
 ) -> CompressionResult:
     # TODO implement
     abstractions = []
-    other_abstractions = result.abstractions
-    rewritten = [ns.parse_s_expression(x) for x in result.rewritten]
+    other_abstractions = copy.deepcopy(result.abstractions)
+    for abstr in other_abstractions:
+        abstr.body = ns.render_s_expression(
+            handle_0_arity_leaves(ns.parse_s_expression(abstr.body))
+        )
+    rewritten = [
+        handle_0_arity_leaves(ns.parse_s_expression(x)) for x in result.rewritten
+    ]
     while other_abstractions:
         abstr, rewritten, other_abstractions = compute_abstraction(
             other_abstractions[0], rewritten, other_abstractions[1:]
         )
         abstractions.append(abstr)
     return CompressionResult(abstractions, rewritten)
+
+
+def handle_0_arity_leaves(
+    exp: ns.SExpression,
+) -> ns.SExpression:
+    if isinstance(exp, ns.SExpression):
+        return ns.SExpression(
+            exp.symbol,
+            [handle_0_arity_leaves(child) for child in exp.children],
+        )
+    assert isinstance(exp, str), "Expected a string or SExpression"
+    if exp in {"/seq"}:
+        return ns.SExpression(exp, [])
+    return exp
 
 
 def compute_abstraction(
@@ -300,7 +301,6 @@ def compute_abstraction(
 
     s_exprs = rewritten + [ns.parse_s_expression(x.body) for x in other_abstractions]
 
-    s_exprs = partial.handle_0_arity_leaves(s_exprs)
     s_exprs = partial.handle_rooted_non_eta_long(s_exprs)
     s_exprs = partial.extract_symvars(s_exprs)
     s_exprs = partial.extract_choicevars(s_exprs)

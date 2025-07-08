@@ -9,6 +9,7 @@ import neurosym as ns
 from imperative_stitch.compress.manipulate_abstraction import (
     abstraction_calls_to_bodies,
 )
+from imperative_stitch.utils.classify_nodes import SYMBOL_TYPES
 from imperative_stitch.utils.def_use_mask_extension.mask import def_use_mask
 from imperative_stitch.utils.def_use_mask_extension.ordering import (
     PythonWithAbstractionsNodeOrdering,
@@ -34,8 +35,7 @@ dbvar_symbol_regex = re.compile(
 dbvar_successor_symbol = dbvar_symbol("successor")
 
 dbvar_wrapper_symbol_by_root_type = {
-    root_type: f"dbvar{SEPARATOR}{root_type}"
-    for root_type in ("Name", "NullableName", "NameStr", "NullableNameStr")
+    root_type: f"dbvar{SEPARATOR}{root_type}" for root_type in SYMBOL_TYPES
 }
 
 
