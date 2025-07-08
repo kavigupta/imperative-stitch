@@ -1,6 +1,7 @@
 import copy
-from dataclasses import dataclass
 import json
+from dataclasses import dataclass
+from typing import List
 
 import neurosym as ns
 import stitch_core
@@ -19,15 +20,12 @@ class PartialAbstraction:
     name: str
     body: ns.SExpression
     root_sym: str
-    metavar_syms: list[str]
-    symvars_syms: list[str]
-    choicevar_syms: list[str]
+    symbols_each: list[str]
+    kinds_each: list[str]
 
     @property
     def arity(self) -> int:
-        return (
-            len(self.metavar_syms) + len(self.symvars_syms) + len(self.choicevar_syms)
-        )
+        return len(self.symbols_each)
 
     def handle_0_arity_leaves(
         self, rewritten: list[ns.SExpression]
@@ -83,40 +81,16 @@ class PartialAbstraction:
         In the rewritten code, we need to reorder the call variables to match metavariables followed by symvars.
         """
 
-        assert not self.symvars_syms, "Symvars should be empty at this point."
-        assert not self.choicevar_syms, "Symvars should be empty at this point."
-
-        metavariable_indices = []
-        symvar_indices = []
-        for i, sym in enumerate(self.metavar_syms):
-            if sym == "Name":
-                symvar_indices.append(i)
-            else:
-                metavariable_indices.append(i)
-
-        self.metavar_syms, self.symvars_syms = (
-            [self.metavar_syms[i] for i in metavariable_indices],
-            [self.metavar_syms[i] for i in symvar_indices],
-        )
-
-        replace = {
-            **{f"#{idx}": f"#{i}" for i, idx in enumerate(metavariable_indices)},
-            **{f"#{idx}": f"%{i}" for i, idx in enumerate(symvar_indices, 1)},
-        }
-        self.body = self.replace_leaves(self.body, replace)
-
-        return [
-            self.reorder_call_variables(
-                rewr,
-                [*metavariable_indices, *symvar_indices],
-            )
-            for rewr in rewritten
-        ]
+        for i, sym in enumerate(self.symbols_each):
+            if sym != "Name":
+                continue
+            assert self.kinds_each[i] == "#", "Should be a metavariable at this point."
+            self.kinds_each[i] = "%"
+        return rewritten
 
     def extract_choicevars(
         self, rewritten: list[ns.SExpression]
     ) -> list[ns.SExpression]:
-        assert not self.choicevar_syms, "Choicevars should be empty at this point."
         target_vars = sorted(
             {
                 x.symbol
@@ -127,47 +101,25 @@ class PartialAbstraction:
         assert all(
             x.startswith("#") for x in target_vars
         ), "only metavariables should appear left of an App"
-        indices = [None] * self.arity
-        replace = {}
-        new_metavars = []
-        new_choicevars = []
-        current_idx = 0
-        num_non_choicevars = (
-            len(self.metavar_syms) + len(self.symvars_syms) - len(target_vars)
-        )
-        for i, sym in enumerate(self.metavar_syms):
-            ivar = f"#{i}"
-            if ivar in target_vars:
-                replace[ivar] = f"?{len(new_choicevars)}"
-                indices[num_non_choicevars + len(new_choicevars)] = i
-                new_choicevars.append(sym)
-            else:
-                replace[ivar] = f"#{current_idx}"
-                new_metavars.append(sym)
-                indices[current_idx] = i
-                current_idx += 1
-        for i, _ in enumerate(self.symvars_syms):
-            indices[current_idx] = i + len(self.metavar_syms)
-            current_idx += 1
-        self.body = self.replace_leaves(self.body, replace)
+
+        for var in target_vars:
+            self.kinds_each[int(var[1:])] = "?"
 
         def eta_longify(exp: ns.SExpression) -> ns.SExpression:
             if not isinstance(exp, ns.SExpression):
                 assert isinstance(exp, str), "Expected a string or SExpression"
-                if exp.startswith("?"):
+                if exp in target_vars:
                     return ns.SExpression("/seq", (exp,))
                 return exp
             children = [eta_longify(child) for child in exp.children]
             if is_variable(exp.symbol):
-                assert exp.symbol.startswith("?"), "Choicevars should start with '?'"
+                assert exp.symbol in target_vars
                 return ns.SExpression("/seq", (exp.symbol, *children))
             return ns.SExpression(exp.symbol, children)
 
         self.body = eta_longify(self.body)
 
-        self.metavar_syms = new_metavars
-        self.choicevar_syms = new_choicevars
-        return [self.reorder_call_variables(rewr, indices) for rewr in rewritten]
+        return rewritten
 
     def handle_variables_at_beginning(
         self, rewritten: list[ns.SExpression]
@@ -210,36 +162,8 @@ class PartialAbstraction:
             variable_indices_to_pull.append((idx, var.startswith("#")))
         variable_indices_to_pull.sort(key=lambda x: x[0])
 
-        skipped_metavars = []
-        rename_map = {}
-        count = 0
-        for idx in range(len(self.metavar_syms)):
-            if f"#{idx}" in prefix_variables:
-                skipped_metavars.append(idx)
-                continue
-            rename_map[f"#{idx}"] = f"#{count}"
-            count += 1
-
-        skipped_choicevars = []
-        count = 0
-        for idx in range(len(self.choicevar_syms)):
-            if f"?{idx}" in prefix_variables:
-                skipped_choicevars.append(idx)
-                continue
-            rename_map[f"?{idx}"] = f"?{count}"
-            count += 1
-
-        self.metavar_syms = [
-            self.metavar_syms[i]
-            for i in range(len(self.metavar_syms))
-            if i not in skipped_metavars
-        ]
-
-        self.choicevar_syms = [
-            self.choicevar_syms[i]
-            for i in range(len(self.choicevar_syms))
-            if i not in skipped_choicevars
-        ]
+        for idx, _ in variable_indices_to_pull:
+            self.kinds_each[idx] = None
 
         def rewrite_call_site(
             exp: ns.SExpression,
@@ -264,23 +188,50 @@ class PartialAbstraction:
                 ],
             )
 
-        self.body = self.replace_leaves(
-            ns.SExpression("/subseq", self.body.children[len(prefix_variables) :]),
-            rename_map,
+        self.body = ns.SExpression(
+            "/subseq", self.body.children[len(prefix_variables) :]
         )
 
         rewritten = [rewrite_call_site(rewr) for rewr in rewritten]
         return rewritten
 
-    def to_abstraction(self) -> Abstraction:
-        return Abstraction.of(
+    def to_abstraction(
+        self, rewritten: List[ns.SExpression]
+    ) -> tuple[Abstraction, list[ns.SExpression]]:
+        metavar_indices = []
+        symvar_indices = []
+        choicevar_indices = []
+        for i, kind in enumerate(self.kinds_each):
+            if kind == "#":
+                metavar_indices.append(i)
+            elif kind == "?":
+                choicevar_indices.append(i)
+            elif kind == "%":
+                symvar_indices.append(i)
+            else:
+                assert kind == None
+
+        all_indices = metavar_indices + symvar_indices + choicevar_indices
+        remapping_dict = {
+            f"#{index}": f"{self.kinds_each[index]}{idx_within + (1 if self.kinds_each[index] == '%' else 0)}"
+            for indices in (metavar_indices, symvar_indices, choicevar_indices)
+            for idx_within, index in enumerate(indices)
+        }
+
+        body = self.replace_leaves(self.body, remapping_dict)
+        rewritten = [
+            self.reorder_call_variables(rewr, all_indices) for rewr in rewritten
+        ]
+
+        abstr = Abstraction.of(
             name=self.name,
-            body=self.body,
+            body=body,
             dfa_root=self.root_sym,
-            dfa_metavars=self.metavar_syms,
-            dfa_symvars=self.symvars_syms,
-            dfa_choicevars=self.choicevar_syms,
+            dfa_metavars=[self.symbols_each[i] for i in metavar_indices],
+            dfa_symvars=[self.symbols_each[i] for i in symvar_indices],
+            dfa_choicevars=[self.symbols_each[i] for i in choicevar_indices],
         )
+        return abstr, rewritten
 
     def reorder_call_variables(
         self, rewritten: ns.SExpression, indices: list[int]
@@ -342,9 +293,8 @@ def compute_abstraction(
         name=abstr.name,
         body=ns.parse_s_expression(abstr.body),
         root_sym=abstr.tdfa_annotation["root_state"],
-        metavar_syms=abstr.tdfa_annotation["metavariable_states"],
-        symvars_syms=[],
-        choicevar_syms=[],
+        symbols_each=abstr.tdfa_annotation["metavariable_states"],
+        kinds_each=["#"] * len(abstr.tdfa_annotation["metavariable_states"]),
     )
 
     s_exprs = rewritten + [ns.parse_s_expression(x.body) for x in other_abstractions]
@@ -354,6 +304,8 @@ def compute_abstraction(
     s_exprs = partial.extract_symvars(s_exprs)
     s_exprs = partial.extract_choicevars(s_exprs)
     s_exprs = partial.handle_variables_at_beginning(s_exprs)
+
+    this_abstr, s_exprs = partial.to_abstraction(s_exprs)
 
     rewritten = s_exprs[: len(rewritten)]
 
@@ -366,7 +318,7 @@ def compute_abstraction(
         other_abstr.body = ns.render_s_expression(rewritten_other)
         other_abstr_new.append(other_abstr)
 
-    return partial.to_abstraction(), rewritten, other_abstr_new
+    return this_abstr, rewritten, other_abstr_new
 
 
 def is_variable(symbol: str) -> bool:
@@ -421,5 +373,4 @@ def compress_stitch(pythons, **kwargs) -> CompressionResult:
         symvar_prefix="&",
         **kwargs,
     )
-    print(compressed.abstractions)
     return process_rust_stitch(compressed)
