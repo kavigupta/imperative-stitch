@@ -97,6 +97,7 @@ class PartialAbstraction:
                 for x in ns.postorder(self.body, leaves=False)
                 if is_variable(x.symbol)
             }
+            | {f"#{i}" for i, x in enumerate(self.symbols_each) if x == "seqS"}
         )
         assert all(
             x.startswith("#") for x in target_vars
@@ -361,6 +362,7 @@ def compress_stitch(pythons, **kwargs) -> CompressionResult:
         "Compare": 0,
         "Import": 0,
         "Alias": 0,
+        "Return": 0,
     }
     compressed = stitch_core.compress(
         s_exps,

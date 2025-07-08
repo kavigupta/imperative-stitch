@@ -1,15 +1,15 @@
 import ast
 import json
-from textwrap import dedent
 import unittest
-import stitch_core
+from textwrap import dedent
+
 import neurosym as ns
+import stitch_core
 
 from imperative_stitch.compress.manipulate_abstraction import abstraction_calls_to_stubs
 from imperative_stitch.compress.rust_stitch import compress_stitch
 from imperative_stitch.parser import converter
 from tests.utils import canonicalize
-
 
 
 def run_compression_for_testing(code, **kwargs):
