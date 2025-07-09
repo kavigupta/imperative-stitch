@@ -139,8 +139,9 @@ def assertSameCode(test, actual, expected):
 
 
 class AbstractionRenderingTest(unittest.TestCase):
+
     def test_stub_rendering_simple(self):
-        stub = fn_1.create_stub(fn_1_args)
+        stub = fn_1.create_stub(fn_1_args, is_pythonm=False)
         assertSameCode(
             self,
             stub.to_python(),
@@ -149,8 +150,17 @@ class AbstractionRenderingTest(unittest.TestCase):
             """,
         )
 
+        stub = fn_1.create_stub(fn_1_args, is_pythonm=True)
+        assertSameCode(
+            self,
+            stub.to_python(),
+            """
+            fn_1(&a, &z)
+            """,
+        )
+
     def test_stub_rendering_multi(self):
-        stub = fn_2.create_stub(fn_2_args)
+        stub = fn_2.create_stub(fn_2_args, is_pythonm=False)
         assertSameCode(
             self,
             stub.to_python(),
@@ -159,13 +169,32 @@ class AbstractionRenderingTest(unittest.TestCase):
             """,
         )
 
+        stub = fn_2.create_stub(fn_2_args, is_pythonm=True)
+        assertSameCode(
+            self,
+            stub.to_python(),
+            """
+            fn_2(`print(2)`, &c, &a, &b, &d, `if x == 3:\\n    pass`)
+            """,
+        )
+
     def test_stub_rendering_multi_w_nothing(self):
-        stub = fn_2.create_stub(fn_2_args_w_nothing)
+        stub = fn_2.create_stub(fn_2_args_w_nothing, is_pythonm=False)
         assertSameCode(
             self,
             stub.to_python(),
             """
             fn_2(__code__('print(2)'), __ref__(c), __ref__(a), __ref__(b), __ref__(d), __code__(''))
+            """,
+        )
+
+        stub = fn_2.create_stub(fn_2_args_w_nothing, is_pythonm=True)
+
+        assertSameCode(
+            self,
+            stub.to_python(),
+            """
+            fn_2(`print(2)`, &c, &a, &b, &d, ``)
             """,
         )
 

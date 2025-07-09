@@ -3,21 +3,29 @@ import ast
 import neurosym as ns
 
 
-def render_symvar(node):
+def render_symvar(node, *, is_pythonm):
     """
     Render this PythonAST as a __ref__ variable for stub display, i.e.,
         `a` -> `__ref__(a)`
     """
+    if is_pythonm:
+        return ns.make_python_ast.make_name("&" + node)
     return ns.make_python_ast.make_call(
         ns.PythonSymbol(name="__ref__", scope=None), ns.make_python_ast.make_name(node)
     )
 
 
-def render_codevar(node):
+# class QuotedCodeAST(PythonAST):
+#     pass
+
+
+def render_codevar(node, *, is_pythonm):
     """
     Render this PythonAST as a __code__ variable for stub display, i.e.,
         `a` -> `__code__("a")`
     """
+    if is_pythonm:
+        return ns.make_python_ast.make_name("`" + node + "`")
     return ns.make_python_ast.make_call(
         ns.PythonSymbol(name="__code__", scope=None),
         ns.make_python_ast.make_constant(node.to_python()),
