@@ -24,7 +24,8 @@ def run_compression_for_testing(code, *, is_pythonm=False, **kwargs):
     ]
     rewritten = [converter.s_exp_to_python_ast(x) for x in result.rewritten]
     rewritten = [
-        abstraction_calls_to_stubs(x, abstr_dict, is_pythonm=is_pythonm) for x in rewritten
+        abstraction_calls_to_stubs(x, abstr_dict, is_pythonm=is_pythonm)
+        for x in rewritten
     ]
     for x in result.abstractions:
         print(ns.render_s_expression(x.body.to_ns_s_exp()))

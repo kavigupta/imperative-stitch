@@ -69,7 +69,6 @@ class SequenceTest(unittest.TestCase):
             abstraction_calls_to_stubs(
                 converter.s_exp_to_python_ast(self.ctx_in_seq),
                 self.abtractions,
-                is_pythonm=False,
             ).to_python(),
             """
             fn_1(__ref__(n), __ref__(s))
@@ -83,7 +82,6 @@ class SequenceTest(unittest.TestCase):
             abstraction_calls_to_stubs(
                 converter.s_exp_to_python_ast(self.ctx_rooted),
                 self.abtractions,
-                is_pythonm=False,
             ).to_python(),
             """
             if x:
@@ -126,7 +124,6 @@ class SequenceTest(unittest.TestCase):
             abstraction_calls_to_bodies(
                 converter.s_exp_to_python_ast(self.ctx_in_seq),
                 self.abtractions,
-                is_pythonm=False,
             ).to_python(),
             """
             n = int(input())
@@ -158,7 +155,6 @@ class SequenceTest(unittest.TestCase):
             abstraction_calls_to_bodies(
                 converter.s_exp_to_python_ast(self.ctx_rooted),
                 self.abtractions,
-                is_pythonm=False,
             ).to_python(),
             """
             if x:
@@ -378,7 +374,6 @@ class MultiKindTest(unittest.TestCase):
             abstraction_calls_to_stubs(
                 converter.s_exp_to_python_ast(self.ctx_includes_choicevar),
                 self.abstractions,
-                is_pythonm=False,
             ).to_python(),
             """
             fn_1(__code__('1 * 2'), __ref__(x), __ref__(y), __code__('z = x'))
@@ -391,7 +386,6 @@ class MultiKindTest(unittest.TestCase):
             abstraction_calls_to_stubs(
                 converter.s_exp_to_python_ast(self.ctx_includes_multi_choicevar),
                 self.abstractions,
-                is_pythonm=False,
             ).to_python(),
             r"""
             fn_1(__code__('1 * 2'), __ref__(x), __ref__(y), __code__('z = x\nu = x'))
@@ -404,7 +398,6 @@ class MultiKindTest(unittest.TestCase):
             abstraction_calls_to_stubs(
                 converter.s_exp_to_python_ast(self.ctx_no_choicevar),
                 self.abstractions,
-                is_pythonm=False,
             ).to_python(),
             """
             fn_1(__code__('4 * 3'), __ref__(x), __ref__(y), __code__(''))
@@ -417,7 +410,6 @@ class MultiKindTest(unittest.TestCase):
             abstraction_calls_to_stubs(
                 converter.s_exp_to_python_ast(self.ctx_includes_metavariable_stub),
                 self.abstractions,
-                is_pythonm=False,
             ).to_python(),
             """
             fn_1(__code__('fn_5()'), __ref__(x), __ref__(y), __code__('z = x'))
@@ -430,7 +422,6 @@ class MultiKindTest(unittest.TestCase):
             abstraction_calls_to_stubs(
                 converter.s_exp_to_python_ast(self.ctx_includes_choicevar_stub),
                 self.abstractions,
-                is_pythonm=False,
             ).to_python(),
             """
             fn_1(__code__('1 * 2'), __ref__(x), __ref__(y), __code__('fn_6()'))
@@ -443,7 +434,6 @@ class MultiKindTest(unittest.TestCase):
             abstraction_calls_to_stubs(
                 converter.s_exp_to_python_ast(self.ctx_includes_choicevar_seq_stub),
                 self.abstractions,
-                is_pythonm=False,
             ).to_python(),
             """
             fn_1(__code__('1 * 2'), __ref__(x), __ref__(y), __code__('fn_6()'))
@@ -456,7 +446,6 @@ class MultiKindTest(unittest.TestCase):
             abstraction_calls_to_bodies(
                 converter.s_exp_to_python_ast(self.ctx_includes_choicevar),
                 self.abstractions,
-                is_pythonm=False,
             ).to_python(),
             """
             if 1 * 2 * 3 * 4 * 5:
@@ -472,7 +461,6 @@ class MultiKindTest(unittest.TestCase):
                 self.ctx_includes_choicevar.replace("fn_1", "fn_4")
             ),
             self.abstractions,
-            is_pythonm=False,
         )
         print(res)
         assertSameCode(
@@ -492,7 +480,6 @@ class MultiKindTest(unittest.TestCase):
                 self.ctx_no_choicevar.replace("fn_1", "fn_4")
             ),
             self.abstractions,
-            is_pythonm=False,
         )
         print(res)
         assertSameCode(
@@ -530,7 +517,6 @@ class MultiKindTest(unittest.TestCase):
             abstraction_calls_to_bodies(
                 converter.s_exp_to_python_ast(self.ctx_includes_multi_choicevar),
                 self.abstractions,
-                is_pythonm=False,
             ).to_python(),
             """
             if 1 * 2 * 3 * 4 * 5:
@@ -545,9 +531,7 @@ class MultiKindTest(unittest.TestCase):
         assertSameCode(
             self,
             abstraction_calls_to_bodies(
-                converter.s_exp_to_python_ast(self.ctx_no_choicevar),
-                self.abstractions,
-                is_pythonm=False,
+                converter.s_exp_to_python_ast(self.ctx_no_choicevar), self.abstractions
             ).to_python(),
             """
             if 1 * 2 * 3 * 4 * 5:
@@ -560,7 +544,6 @@ class MultiKindTest(unittest.TestCase):
         out = abstraction_calls_to_stubs(
             converter.s_exp_to_python_ast(self.ctx_for_fn2_1),
             self.abstractions,
-            is_pythonm=False,
         ).to_python()
         self.maxDiff = None
         assertSameCode(
@@ -575,9 +558,7 @@ class MultiKindTest(unittest.TestCase):
 
     def test_injection_fn2_1(self):
         out = abstraction_calls_to_bodies(
-            converter.s_exp_to_python_ast(self.ctx_for_fn2_1),
-            self.abstractions,
-            is_pythonm=False,
+            converter.s_exp_to_python_ast(self.ctx_for_fn2_1), self.abstractions
         ).to_python()
         self.maxDiff = None
         assertSameCode(

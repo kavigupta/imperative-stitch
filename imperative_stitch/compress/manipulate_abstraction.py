@@ -41,7 +41,7 @@ def map_abstraction_calls(program, replace_fn):
     return replace_abstraction_calls(program, handle_to_replacement)
 
 
-def abstraction_calls_to_stubs(program, abstractions, *, is_pythonm):
+def abstraction_calls_to_stubs(program, abstractions, *, is_pythonm=False):
     """
     Replace all abstraction calls with stubs. Does so via a double iteration.
         Possibly faster to use a linearization of the set of stubs.

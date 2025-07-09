@@ -256,7 +256,10 @@ class AbstractionRenderingTest(unittest.TestCase):
         element = fn_2.substitute_body(fn_2_args_with_stub)
         stub = replace_abstraction_calls(
             element,
-            {k: fn_3.create_stub([]) for k in collect_abstraction_calls(element)},
+            {
+                k: fn_3.create_stub([], is_pythonm=False)
+                for k in collect_abstraction_calls(element)
+            },
         )
         assertSameCode(
             self,
