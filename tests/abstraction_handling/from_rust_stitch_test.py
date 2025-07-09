@@ -13,18 +13,18 @@ from imperative_stitch.parser import converter
 from tests.utils import canonicalize, expand_with_slow_tests, small_set_examples
 
 
-def run_compression_for_testing(code, **kwargs):
+def run_compression_for_testing(code, *, is_pythonm=False, **kwargs):
     result = compress_stitch(code, **kwargs)
     abstr_dict = {x.name: x for x in result.abstractions}
     abstractions = [
         abstraction_calls_to_stubs(
-            x.body_with_variable_names(), abstr_dict, is_pythonm=False
+            x.body_with_variable_names(), abstr_dict, is_pythonm=is_pythonm
         )
         for x in result.abstractions
     ]
     rewritten = [converter.s_exp_to_python_ast(x) for x in result.rewritten]
     rewritten = [
-        abstraction_calls_to_stubs(x, abstr_dict, is_pythonm=False) for x in rewritten
+        abstraction_calls_to_stubs(x, abstr_dict, is_pythonm=is_pythonm) for x in rewritten
     ]
     for x in result.abstractions:
         print(ns.render_s_expression(x.body.to_ns_s_exp()))
