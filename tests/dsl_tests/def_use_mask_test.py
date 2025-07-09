@@ -64,7 +64,8 @@ class DefUseMaskTestGeneric(unittest.TestCase):
         )
         if convert_to_python:
             annotated = abstraction_calls_to_stubs(
-                annotated, {x.name: x for x in abstrs}
+                annotated,
+                {x.name: x for x in abstrs},
             )
             return annotated.to_python()
         return annotated
@@ -78,7 +79,8 @@ class DefUseMaskTestGeneric(unittest.TestCase):
         print("*" * 80)
         print(
             abstraction_calls_to_stubs(
-                converter.s_exp_to_python_ast(code), {x.name: x for x in abstractions}
+                converter.s_exp_to_python_ast(code),
+                {x.name: x for x in abstractions},
             ).to_python()
         )
         print("*" * 80)
