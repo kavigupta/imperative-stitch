@@ -44,11 +44,11 @@ class Arguments:
         )
         return cls(metavars, symvars, choicevars)
 
-    def render_list(self):
+    def render_list(self, *, is_pythonm):
         return (
-            [render_codevar(x) for x in self.metavars]
-            + [render_symvar(x) for x in self.symvars]
-            + [render_codevar(x) for x in self.choicevars]
+            [render_codevar(x, is_pythonm=is_pythonm) for x in self.metavars]
+            + [render_symvar(x, is_pythonm=is_pythonm) for x in self.symvars]
+            + [render_codevar(x, is_pythonm=is_pythonm) for x in self.choicevars]
         )
 
 
@@ -118,7 +118,7 @@ class Abstraction:
             arguments, self.arity, self.sym_arity, self.choice_arity
         )
 
-    def create_stub(self, arguments):
+    def create_stub(self, arguments, *, is_pythonm):
         """
         Create a stub of this abstraction with the given arguments. The stub looks something
             like `fn_1(__code__("a + b"), __ref__(a), __ref__(z), __code("x = 2 + 3"))`,
@@ -126,7 +126,7 @@ class Abstraction:
             variables are __ref__.
         """
         arguments = self.process_arguments(arguments)
-        args_list = arguments.render_list()
+        args_list = arguments.render_list(is_pythonm=is_pythonm)
         e_stub = ns.make_python_ast.make_call(
             ns.PythonSymbol(name=self.name, scope=None),
             *args_list,

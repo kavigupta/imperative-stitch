@@ -17,11 +17,15 @@ def run_compression_for_testing(code, **kwargs):
     result = compress_stitch(code, **kwargs)
     abstr_dict = {x.name: x for x in result.abstractions}
     abstractions = [
-        abstraction_calls_to_stubs(x.body_with_variable_names(), abstr_dict)
+        abstraction_calls_to_stubs(
+            x.body_with_variable_names(), abstr_dict, is_pythonm=False
+        )
         for x in result.abstractions
     ]
     rewritten = [converter.s_exp_to_python_ast(x) for x in result.rewritten]
-    rewritten = [abstraction_calls_to_stubs(x, abstr_dict) for x in rewritten]
+    rewritten = [
+        abstraction_calls_to_stubs(x, abstr_dict, is_pythonm=False) for x in rewritten
+    ]
     for x in result.abstractions:
         print(ns.render_s_expression(x.body.to_ns_s_exp()))
     rewritten = [x.to_python() for x in rewritten]
