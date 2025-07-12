@@ -330,7 +330,16 @@ def is_variable(symbol: str) -> bool:
 
 
 def compress_stitch(pythons, **kwargs) -> CompressionResult:
-    s_exps = [ns.python_to_s_exp(code_snippet) for code_snippet in pythons]
+    s_exps = [
+        ns.python_to_type_annotated_ns_s_exp(
+            code_snippet,
+            ns.python_dfa(),
+            "M",
+            no_leaves=False,
+            only_for_nodes={"None", "Tuple"},
+        )
+        for code_snippet in pythons
+    ]
     cost_prim = {
         "Module": 0,
         "Name": 0,
@@ -364,15 +373,25 @@ def compress_stitch(pythons, **kwargs) -> CompressionResult:
         "Alias": 0,
         "Return": 0,
     }
+    for symbol in {
+        node if isinstance(node, str) else node.symbol
+        for program in s_exps
+        for node in ns.postorder(program, leaves=True)
+    }:
+        symbol_trimmed = symbol.split(ns.python_dsl.names.PYTHON_DSL_SEPARATOR)[0]
+        if symbol_trimmed in cost_prim:
+            cost_prim[symbol] = cost_prim[symbol_trimmed]
+    s_exps = [ns.render_s_expression(exp) for exp in s_exps]
     compressed = stitch_core.compress(
         s_exps,
         cost_prim=json.dumps(cost_prim).replace(" ", ""),
-        tdfa_json_path="../Stitch.jl/data_for_testing/dfa_imp.json",
+        tdfa_json_path="../neurosym-lib/test_data/dfa.json",
         tdfa_root="M",
         valid_metavars='["S","E","seqS"]',
         valid_roots='["S","E","seqS"]',
         tdfa_non_eta_long_states='{"seqS":"S"}',
         symvar_prefix="&",
+        tdfa_split=ns.python_dsl.names.PYTHON_DSL_SEPARATOR,
         **kwargs,
     )
     return process_rust_stitch(compressed)
