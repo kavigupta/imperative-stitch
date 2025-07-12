@@ -330,16 +330,7 @@ def is_variable(symbol: str) -> bool:
 
 
 def compress_stitch(pythons, **kwargs) -> CompressionResult:
-    s_exps = [
-        ns.python_to_type_annotated_ns_s_exp(
-            code_snippet,
-            ns.python_dfa(),
-            "M",
-            no_leaves=False,
-            only_for_nodes={"None", "Tuple"},
-        )
-        for code_snippet in pythons
-    ]
+
     cost_prim = {
         "Module": 0,
         "Name": 0,
@@ -373,15 +364,11 @@ def compress_stitch(pythons, **kwargs) -> CompressionResult:
         "Alias": 0,
         "Return": 0,
     }
-    for symbol in {
-        node if isinstance(node, str) else node.symbol
-        for program in s_exps
-        for node in ns.postorder(program, leaves=True)
-    }:
+    s_exps, symbols = convert_all_to_annotated_s_exps(pythons)
+    for symbol in symbols:
         symbol_trimmed = symbol.split(ns.python_dsl.names.PYTHON_DSL_SEPARATOR)[0]
         if symbol_trimmed in cost_prim:
             cost_prim[symbol] = cost_prim[symbol_trimmed]
-    s_exps = [ns.render_s_expression(exp) for exp in s_exps]
     compressed = stitch_core.compress(
         s_exps,
         cost_prim=json.dumps(cost_prim).replace(" ", ""),
@@ -395,3 +382,23 @@ def compress_stitch(pythons, **kwargs) -> CompressionResult:
         **kwargs,
     )
     return process_rust_stitch(compressed)
+
+
+def convert_all_to_annotated_s_exps(pythons):
+    s_exps = [
+        ns.python_to_type_annotated_ns_s_exp(
+            code_snippet,
+            ns.python_dfa(),
+            "M",
+            no_leaves=False,
+            only_for_nodes={"None", "Tuple"},
+        )
+        for code_snippet in pythons
+    ]
+    symbols = {
+        node if isinstance(node, str) else node.symbol
+        for program in s_exps
+        for node in ns.postorder(program, leaves=True)
+    }
+    s_exps = [ns.render_s_expression(exp) for exp in s_exps]
+    return s_exps, sorted(symbols)
