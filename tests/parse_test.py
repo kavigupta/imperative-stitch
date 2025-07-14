@@ -78,9 +78,9 @@ class AbstractionBodyRenderTest(unittest.TestCase):
                     (const-&f:0~Name)
                     (arguments~As
                         (list~_A_~0)
-                        (list~_A_~1 (arg~A (const-&x:1~Name) (const-None~TA) (const-None~TC)))
+                        (list~_A_~1 (arg~A (const-&x:1~Name) (const-None~E) (const-None~TC)))
                         (const-None~A) (list~_A_~0) (list~_E_~0) (const-None~A) (list~_E_~0))
-                    (var-#0~seqS) (list~_E_~0) (const-None~TA) (const-None~TC))
+                    (var-#0~seqS) (list~_E_~0) (const-None~E) (const-None~TC))
                 """
             )
         )
