@@ -41,9 +41,7 @@ class NodeToContainingFunction(GroupSimilarConstructsVisitor):
     # pylint: disable=arguments-renamed
     def visit_DictComp(self, node):
         self.visit(self.get_generators(node))
-        return self.visit_scope(
-            node, [node.key, node.value, self.get_ifs(node)]
-        )
+        return self.visit_scope(node, [node.key, node.value, self.get_ifs(node)])
 
     def visit_Lambda(self, node):
         self.visit_defaults_of(node.args)
