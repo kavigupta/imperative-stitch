@@ -329,8 +329,7 @@ def is_variable(symbol: str) -> bool:
     return symbol.startswith("%") or symbol.startswith("#") or symbol.startswith("?")
 
 
-def compress_stitch(pythons, **kwargs) -> CompressionResult:
-
+def compress_stitch(pythons, *, use_symvars=True, **kwargs) -> CompressionResult:
     cost_prim = {
         "Module": 0,
         "Name": 0,
@@ -369,6 +368,9 @@ def compress_stitch(pythons, **kwargs) -> CompressionResult:
         symbol_trimmed = symbol.split(ns.python_dsl.names.PYTHON_DSL_SEPARATOR)[0]
         if symbol_trimmed in cost_prim:
             cost_prim[symbol] = cost_prim[symbol_trimmed]
+    kwargs = kwargs.copy()
+    if use_symvars:
+        kwargs["symvar_prefix"] = "&"
     compressed = stitch_core.compress(
         s_exps,
         cost_prim=json.dumps(cost_prim).replace(" ", ""),
@@ -377,7 +379,6 @@ def compress_stitch(pythons, **kwargs) -> CompressionResult:
         valid_metavars='["S","E","seqS"]',
         valid_roots='["S","E","seqS"]',
         tdfa_non_eta_long_states='{"seqS":"S"}',
-        symvar_prefix="&",
         tdfa_split=ns.python_dsl.names.PYTHON_DSL_SEPARATOR,
         **kwargs,
     )
