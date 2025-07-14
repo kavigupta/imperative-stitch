@@ -1,11 +1,7 @@
-import ast
-import json
 import unittest
 from textwrap import dedent
 
 import neurosym as ns
-import stitch_core
-from parameterized import parameterized
 
 from imperative_stitch.compress.manipulate_abstraction import abstraction_calls_to_stubs
 from imperative_stitch.compress.rust_stitch import compress_stitch
