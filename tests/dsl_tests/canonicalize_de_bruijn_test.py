@@ -310,7 +310,7 @@ class LikelihoodDeBruijnTest(unittest.TestCase):
             self.compute_likelihood(fit_to, test_program),
             [
                 (
-                    "(FunctionDef~S (dbvar~Name (dbvar-0~DBV)) (arguments~As (list~_A_~0) (list~_A_~1 (arg~A (dbvar~Name (dbvar-0~DBV)) (const-None~TA) (const-None~TC))) (const-None~A) (list~_A_~0) (list~_E_~0) (const-None~A) (list~_E_~0)) (/seq~seqS~1 (Pass~S)) (list~_E_~0) (const-None~TA) (const-None~TC))",
+                    "(FunctionDef~S (dbvar~Name (dbvar-0~DBV)) (arguments~As (list~_A_~0) (list~_A_~1 (arg~A (dbvar~Name (dbvar-0~DBV)) (const-None~E) (const-None~TC))) (const-None~A) (list~_A_~0) (list~_E_~0) (const-None~A) (list~_E_~0)) (/seq~seqS~1 (Pass~S)) (list~_E_~0) (const-None~E) (const-None~TC))",
                     Fraction(1, 2),
                 ),
                 ("(Pass~S)", Fraction(1, 2)),
