@@ -2,6 +2,7 @@ import json
 import os
 import shlex
 import subprocess
+import tempfile
 
 import appdirs
 
@@ -24,13 +25,15 @@ def run_julia_stitch(*args, iters, **kwargs):
     output = run_julia_stitch_generic(
         "cli/compress.jl", *args, **kwargs, extra_args=[f"--iterations={iters}"]
     )
-    *_, tildes1, abstractions, tildes2, rewritten, newline = output.split("\n")
-    assert tildes1 == "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-    assert tildes2 == "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    *_, tildes0, sizes, tildes1, abstractions, tildes2, rewritten, newline = (
+        output.split("\n")
+    )
+    assert tildes0 == tildes1 == tildes2 == "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
     assert newline == ""
+    sizes = json.loads(sizes)
     abstractions = json.loads(abstractions)
     rewritten = json.loads(rewritten)
-    return abstractions, rewritten
+    return sizes, abstractions, rewritten
 
 
 def run_julia_rewrite(code, abstractions, **kwargs):
@@ -64,6 +67,7 @@ def run_julia_stitch_generic(
     root_states=("E", "S", "seqS"),
     metavariable_statements=True,
     metavariables_anywhere=False,
+    minimum_number_matches=2,
 ):
     size_by_symbol = {
         "Module": 0.0,
@@ -89,11 +93,20 @@ def run_julia_stitch_generic(
     dfa_file = cache_dir + "/dfa.json"
     with open(dfa_file, "w") as f:
         json.dump(export_dfa(), f, indent=2)
+    code_str = json.dumps(code)
+
+    if len(code_str) > 10**5:
+        p = tempfile.mktemp()
+        with open(p, "w") as f:
+            f.write(code_str)
+        corpus_arg = f"--corpus-file={p}"
+    else:
+        corpus_arg = f"--corpus={code_str}"
     cmd = [
         "julia",
         "--project=" + stitch_jl_dir,
         os.path.join(stitch_jl_dir, path),
-        f"--corpus={json.dumps(code)}",
+        corpus_arg,
         f"--max-arity={max_arity}",
         *([f"--dfa={dfa_file}"] if include_dfa else []),
         f"--size-by-symbol={json.dumps(size_by_symbol)}",
@@ -108,6 +121,7 @@ def run_julia_stitch_generic(
         ),
         *(["--dfa-metavariable-allow-anything"] if metavariables_anywhere else []),
         *extra_args,
+        f"--minimum-number-matches={minimum_number_matches}",
     ]
     if not quiet:
         print("Run the following command to debug:")

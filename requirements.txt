@@ -8,6 +8,7 @@ pytest-xdist
 tqdm>=4.65.0
 timeout-decorator>=0.5.0
 parameterized==0.9.0
-pylint
+pylint==3.3.7
 black
 isort
+PyGithub>=2.3.0
