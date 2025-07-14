@@ -21,7 +21,7 @@ from imperative_stitch.data.compression_testing_code import compression_testing_
 def run_stitch_cached(
     c, root_states=("S", "seqS"), iters=1, metavariables_anywhere=False
 ):
-    return run_julia_stitch(
+    _, abstractions, rewritten = run_julia_stitch(
         c,
         stitch_jl_dir="../Stitch.jl/",
         iters=iters,
@@ -32,6 +32,7 @@ def run_stitch_cached(
         metavariable_statements=False,
         metavariables_anywhere=metavariables_anywhere,
     )
+    return abstractions, rewritten
 
 
 @permacache(
