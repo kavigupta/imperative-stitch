@@ -37,6 +37,8 @@ class NodeToContainingFunction(GroupSimilarConstructsVisitor):
         self.visit(self.get_generators(node))
         return self.visit_scope(node, [node.elt, self.get_ifs(node)])
 
+    # The argument name changed from `comp_node` to `node` in later versions of Python.
+    # pylint: disable=arguments-renamed
     def visit_DictComp(self, node):
         self.visit(self.get_generators(node))
         return self.visit_scope(
