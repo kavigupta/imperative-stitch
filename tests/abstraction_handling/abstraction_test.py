@@ -1,6 +1,7 @@
 import copy
 import unittest
 from textwrap import dedent
+import ast
 
 import neurosym as ns
 from parameterized import parameterized
@@ -347,6 +348,124 @@ class AbstractionRenderingTest(unittest.TestCase):
                     print(0)
             """,
         )
+
+    def test_body_expand_recursive_two(self):
+        context = converter.s_exp_to_python_ast(
+            "(/seq (fn_2 (Call (Name g_print Load) (list (Constant i2 None)) nil) &c:0 &a:0 &b:0 &d:0 (/choiceseq (fn_3))) (fn_2 (Constant i10 None) &c:0 &a:0 &b:0 &d:0 (/choiceseq (fn_3))))"
+        )
+        context = abstraction_calls_to_bodies_recursively(
+            context, {"fn_2": fn_2, "fn_3": fn_3}
+        )
+        assertSameCode(
+            self,
+            context.to_python(),
+            """
+            if a == 0:
+                if b == 0:
+                    if c == 0:
+                        print(-1)
+                    else:
+                        print(0)
+                else:
+                    print(1)
+                    print(-c / b)
+            else:
+                x = 30
+                x = 10
+                d = b ** 2 - 4 * a * c
+                if d > 0:
+                    print(2)
+                elif d == 0:
+                    print(1)
+                    print(-b / (2 * a))
+                else:
+                    print(0)
+            if a == 0:
+                if b == 0:
+                    if c == 0:
+                        print(-1)
+                    else:
+                        print(0)
+                else:
+                    print(1)
+                    print(-c / b)
+            else:
+                x = 30
+                x = 10
+                d = b ** 2 - 4 * a * c
+                if d > 0:
+                    10
+                elif d == 0:
+                    print(1)
+                    print(-b / (2 * a))
+                else:
+                    print(0)
+            """,
+        )
+
+    def test_body_expanded_twice(self):
+        abstractions = {
+            "fn_0": Abstraction.of(
+                **{
+                    "name": "fn_0",
+                    "body": "(Expr (Call (Name g_func Load) (list (_starred_content (BinOp (BinOp #0 Add #0) Add (Constant i0 None)))) nil))",
+                    "dfa_root": "S",
+                    "dfa_symvars": [],
+                    "dfa_metavars": ["E"],
+                    "dfa_choicevars": [],
+                }
+            ),
+            "fn_1": Abstraction.of(
+                **{
+                    "name": "fn_1",
+                    "body": "(fn_0 #0)",
+                    "arity": 1,
+                    "sym_arity": 0,
+                    "choice_arity": 0,
+                    "dfa_root": "S",
+                    "dfa_symvars": [],
+                    "dfa_metavars": ["E"],
+                    "dfa_choicevars": [],
+                }
+            ),
+        }
+        program = converter.s_exp_to_python_ast(
+            "(Module (/seq (fn_1 (Name g_e Load)) (fn_1 (Name g_g Load))) nil)"
+        )
+        code = abstraction_calls_to_bodies_recursively(program, abstractions)
+        self.assertEqual(code.to_python(), "func(e + e + 0)\nfunc(g + g + 0)")
+
+    def test_expand_unique_ids(self):
+        # This test checks that ids are reset to be unique when a body containing a stub is expanded.
+        # Related to test_body_expanded_twice.
+        abstractions = {
+            "fn_1": Abstraction.of(
+                **{
+                    "name": "fn_1",
+                    "body": "(fn_0 #0)",
+                    "arity": 1,
+                    "sym_arity": 0,
+                    "choice_arity": 0,
+                    "dfa_root": "S",
+                    "dfa_symvars": [],
+                    "dfa_metavars": ["E"],
+                    "dfa_choicevars": [],
+                }
+            ),
+        }
+        program = converter.s_exp_to_python_ast(
+            "(Module (/seq (fn_1 (Name g_e Load)) (fn_1 (Name g_g Load))) nil)"
+        )
+        code = abstraction_calls_to_bodies(program, abstractions)
+        assert code.typ == ast.Module
+        code = code.children[0]
+        assert isinstance(code, ns.SequenceAST)
+        [e_call, g_call] = code.elements
+        [e] = e_call.args
+        [g] = g_call.args
+        self.assertEqual(e.to_python(), "e")
+        self.assertEqual(g.to_python(), "g")
+        self.assertNotEqual(e_call.handle, g_call.handle)
 
     def test_body_rendering_multi_with_pragmas(self):
         stub = fn_2.substitute_body(fn_2_args, pragmas=True)

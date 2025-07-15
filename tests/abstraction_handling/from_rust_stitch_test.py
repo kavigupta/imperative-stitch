@@ -35,7 +35,9 @@ class TestConversion(unittest.TestCase):
             )
             for program in rewritten
         ]
+        maxDiff, self.maxDiff = self.maxDiff, None
         self.assertEqual([canonicalize(x) for x in code], inlined)
+        self.maxDiff = maxDiff
         rewritten = [
             abstraction_calls_to_stubs(x, abstr_dict, is_pythonm=is_pythonm)
             for x in rewritten
@@ -1053,6 +1055,59 @@ class TestConversion(unittest.TestCase):
             code, iterations=3, max_arity=10
         )
         self.assertEqual(code, rewr)
+
+    def test_nested_abstractions_multiused(self):
+        # See tests/abstraction_handling/abstraction_test.py::AbstractionRenderingTest::test_body_expanded_twice
+        code = [
+            canonicalize(
+                """
+                func(a + a + 3)
+                func(c + c + 0)
+                """
+            ),
+            canonicalize(
+                """
+                func(e + e + 0)
+                func(g + g + 0)
+                """
+            ),
+        ]
+        _, _, [a1, a2], rewritten = self.run_compression_for_testing(
+            code, iterations=2, max_arity=2
+        )
+        self.assertEqual(
+            a1,
+            dedent(
+                """
+                func(#1 + #1 + #0)
+                """
+            ).strip(),
+        )
+        self.assertEqual(
+            a2,
+            dedent(
+                """
+                fn_0(__code__('0'), __code__('#0'))
+                """
+            ).strip(),
+        )
+        self.assertEqual(
+            rewritten,
+            [
+                canonicalize(
+                    """
+                    fn_0(__code__('3'), __code__('a'))
+                    fn_1(__code__('c'))
+                    """
+                ),
+                canonicalize(
+                    """
+                    fn_1(__code__('e'))
+                    fn_1(__code__('g'))
+                    """
+                ),
+            ],
+        )
 
     @expand_with_slow_tests(200, first_fast=3)
     def test_smoke(self, seed):
