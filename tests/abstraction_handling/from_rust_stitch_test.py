@@ -3,37 +3,50 @@ from textwrap import dedent
 
 import neurosym as ns
 
-from imperative_stitch.compress.manipulate_abstraction import abstraction_calls_to_stubs
+from imperative_stitch.compress.manipulate_abstraction import (
+    abstraction_calls_to_bodies_recursively,
+    abstraction_calls_to_stubs,
+)
 from imperative_stitch.compress.rust_stitch import compress_stitch, handle_splice_seqs
 from imperative_stitch.parser import converter
 from tests.utils import canonicalize, expand_with_slow_tests, small_set_examples
 
 
-def run_compression_for_testing(code, *, is_pythonm=False, **kwargs):
-    result = compress_stitch(code, **kwargs)
-    abstr_dict = {x.name: x for x in result.abstractions}
-    abstractions = [
-        abstraction_calls_to_stubs(
-            x.body_with_variable_names(), abstr_dict, is_pythonm=is_pythonm
-        )
-        for x in result.abstractions
-    ]
-    rewritten_raw = result.rewritten
-    rewritten = [converter.s_exp_to_python_ast(x) for x in result.rewritten]
-    rewritten = [
-        abstraction_calls_to_stubs(x, abstr_dict, is_pythonm=is_pythonm)
-        for x in rewritten
-    ]
-    rewritten = [x.to_python() for x in rewritten]
-    return (
-        result.abstractions,
-        rewritten_raw,
-        [x.to_python() for x in abstractions],
-        rewritten,
-    )
+def run_compression_for_testing(*args, **kwargs):
+    return TestConversion().run_compression_for_testing(*args, **kwargs)
 
 
 class TestConversion(unittest.TestCase):
+
+    def run_compression_for_testing(self, code, *, is_pythonm=False, **kwargs):
+        result = compress_stitch(code, **kwargs)
+        abstr_dict = {x.name: x for x in result.abstractions}
+        abstractions = [
+            abstraction_calls_to_stubs(
+                x.body_with_variable_names(), abstr_dict, is_pythonm=is_pythonm
+            )
+            for x in result.abstractions
+        ]
+        rewritten_raw = result.rewritten
+        rewritten = [converter.s_exp_to_python_ast(x) for x in result.rewritten]
+        inlined = [
+            canonicalize(
+                abstraction_calls_to_bodies_recursively(program, abstr_dict).to_python()
+            )
+            for program in rewritten
+        ]
+        self.assertEqual([canonicalize(x) for x in code], inlined)
+        rewritten = [
+            abstraction_calls_to_stubs(x, abstr_dict, is_pythonm=is_pythonm)
+            for x in rewritten
+        ]
+        rewritten = [x.to_python() for x in rewritten]
+        return (
+            result.abstractions,
+            rewritten_raw,
+            [x.to_python() for x in abstractions],
+            rewritten,
+        )
 
     def test_basic_seq_splice_seq(self):
         self.assertEqual(
@@ -80,7 +93,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        _, _, abstractions, rewritten = run_compression_for_testing(
+        _, _, abstractions, rewritten = self.run_compression_for_testing(
             code, iterations=1, max_arity=10
         )
         self.assertEqual(
@@ -112,7 +125,9 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        _, _, abstractions, rewritten = run_compression_for_testing(code, iterations=1)
+        _, _, abstractions, rewritten = self.run_compression_for_testing(
+            code, iterations=1
+        )
         self.assertEqual(
             abstractions,
             ["%3 + %2 + #0 + %1 + 2 + 3"],
@@ -154,7 +169,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        _, _, abstractions, rewritten = run_compression_for_testing(
+        _, _, abstractions, rewritten = self.run_compression_for_testing(
             code, iterations=1, max_arity=0
         )
         self.assertEqual(
@@ -200,7 +215,9 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        _, _, abstractions, rewritten = run_compression_for_testing(code, iterations=2)
+        _, _, abstractions, rewritten = self.run_compression_for_testing(
+            code, iterations=2
+        )
         self.assertEqual(
             abstractions,
             [
@@ -251,7 +268,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr], _, [abstraction_text], rewritten = run_compression_for_testing(
+        [abstr], _, [abstraction_text], rewritten = self.run_compression_for_testing(
             code, iterations=1
         )
         self.assertEqual(
@@ -308,7 +325,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr], _, [abstraction_text], rewritten = run_compression_for_testing(
+        [abstr], _, [abstraction_text], rewritten = self.run_compression_for_testing(
             code, iterations=1
         )
         self.assertEqual(
@@ -373,7 +390,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr], _, [abstraction_text], rewritten = run_compression_for_testing(
+        [abstr], _, [abstraction_text], rewritten = self.run_compression_for_testing(
             code, iterations=1, max_arity=10
         )
         self.assertEqual(
@@ -446,7 +463,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr], _, [abstraction_text], rewritten = run_compression_for_testing(
+        [abstr], _, [abstraction_text], rewritten = self.run_compression_for_testing(
             code, iterations=1, max_arity=10
         )
         self.assertEqual(
@@ -510,7 +527,7 @@ class TestConversion(unittest.TestCase):
             ),
         ]
         [abstr], rewritten_raw, [abstraction_text], rewritten = (
-            run_compression_for_testing(code, iterations=1, max_arity=3)
+            self.run_compression_for_testing(code, iterations=1, max_arity=3)
         )
         self.maxDiff = None
         self.assertEqual(
@@ -579,7 +596,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr], _, [abstraction_text], rewritten = run_compression_for_testing(
+        [abstr], _, [abstraction_text], rewritten = self.run_compression_for_testing(
             code, iterations=1, max_arity=10
         )
         self.assertEqual(
@@ -653,7 +670,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr], _, [abstraction_text], rewritten = run_compression_for_testing(
+        [abstr], _, [abstraction_text], rewritten = self.run_compression_for_testing(
             code, iterations=1, max_arity=10
         )
         self.assertEqual(
@@ -723,7 +740,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr], _, [abstraction_text], rewritten = run_compression_for_testing(
+        [abstr], _, [abstraction_text], rewritten = self.run_compression_for_testing(
             code, iterations=1, max_arity=10
         )
         self.assertEqual(
@@ -783,7 +800,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [_], rewritten_raw, [_], _ = run_compression_for_testing(
+        [_], rewritten_raw, [_], _ = self.run_compression_for_testing(
             code, iterations=1, max_arity=10
         )
         for x in rewritten_raw:
@@ -834,7 +851,7 @@ class TestConversion(unittest.TestCase):
             ),
         ]
         [abstr_1, abstr_2], _, [abstraction_text_1, abstraction_text_2], rewritten = (
-            run_compression_for_testing(code, iterations=2, max_arity=10)
+            self.run_compression_for_testing(code, iterations=2, max_arity=10)
         )
         self.assertEqual(abstraction_text_1, "function(1, 3 ** 2)\n%1 = 2 + 3 + 4")
         self.assertEqual(
@@ -940,7 +957,7 @@ class TestConversion(unittest.TestCase):
             ),
         ]
         [abstr_1, abstr_2], _, [abstraction_text_1, abstraction_text_2], rewritten = (
-            run_compression_for_testing(code, iterations=2, max_arity=10)
+            self.run_compression_for_testing(code, iterations=2, max_arity=10)
         )
         print("ABC", ns.render_s_expression(abstr_2.body.to_ns_s_exp()))
         self.assertEqual(abstraction_text_1, "function(1, 3 ** 2)\n%1 = 2 + 3 + 4")
@@ -1016,7 +1033,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [], _, [], rewritten = run_compression_for_testing(
+        [], _, [], rewritten = self.run_compression_for_testing(
             code, iterations=3, max_arity=10
         )
         self.assertEqual(rewritten, code)
@@ -1032,7 +1049,9 @@ class TestConversion(unittest.TestCase):
                 """
             )
         ]
-        [], _, [], rewr = run_compression_for_testing(code, iterations=3, max_arity=10)
+        [], _, [], rewr = self.run_compression_for_testing(
+            code, iterations=3, max_arity=10
+        )
         self.assertEqual(code, rewr)
 
     @expand_with_slow_tests(200, first_fast=3)
@@ -1044,4 +1063,4 @@ class TestConversion(unittest.TestCase):
         # not ascii
         if any(not x.isascii() for x in programs):
             return
-        run_compression_for_testing(programs, iterations=2, max_arity=1)
+        self.run_compression_for_testing(programs, iterations=2, max_arity=1)
