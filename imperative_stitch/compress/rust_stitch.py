@@ -136,12 +136,8 @@ class PartialAbstraction:
 
         variable_indices_to_pull = []
         for var in prefix_variables:
-            idx = (
-                int(var[1:])
-                if var.startswith("#")
-                else len(self.metavar_syms) + len(self.symvars_syms) + int(var[1:])
-            )
-            variable_indices_to_pull.append((idx, var.startswith("#")))
+            idx = int(var[1:])
+            variable_indices_to_pull.append((idx, self.kinds_each[idx] == "#"))
         variable_indices_to_pull.sort(key=lambda x: x[0])
 
         for idx, _ in variable_indices_to_pull:
@@ -158,7 +154,7 @@ class PartialAbstraction:
             prefix = []
             # reverse order so pop works
             for idx, is_metavar in variable_indices_to_pull[::-1]:
-                pulled = children.pop(idx)
+                pulled = children[idx]
                 if not is_metavar:
                     pulled = ns.SExpression("/splice", (pulled,))
                 prefix = [pulled] + prefix
@@ -282,6 +278,48 @@ def handle_0_arity_leaves(
     return exp
 
 
+def handle_splice_seqs_in_list_context(
+    head: str, children: list[ns.SExpression]
+) -> tuple[str, list[ns.SExpression]]:
+    new_children = []
+    for child in children:
+        if isinstance(child, ns.SExpression) and child.symbol == "/splice":
+            assert len(child.children) == 1
+            splice_child = child.children[0]
+            if not isinstance(splice_child, ns.SExpression):
+                splice_child = ns.SExpression(splice_child, ())
+            if splice_child.symbol == "/seq":
+                new_children.extend(splice_child.children)
+                continue
+            if splice_child.symbol.startswith("fn_"):
+                # If the splice is a function call, we need to keep it as a splice.
+                new_children.append(child)
+                continue
+            if splice_child.symbol.startswith("#"):
+                # If the splice is a metavariable, we need to keep it as a splice.
+                assert not new_children, "Should not have any children at this point."
+                head = splice_child.symbol
+                new_children.extend(splice_child.children)
+                continue
+            raise ValueError(
+                f"Unexpected splice child: {ns.render_s_expression(splice_child)}"
+            )
+        else:
+            new_children.append(child)
+    return head, new_children
+
+
+def handle_splice_seqs(s_expr: ns.SExpression) -> ns.SExpression:
+    if isinstance(s_expr, str):
+        return s_expr
+    symbol, children = s_expr.symbol, [
+        handle_splice_seqs(child) for child in s_expr.children
+    ]
+    if symbol == "/seq":
+        return ns.SExpression(*handle_splice_seqs_in_list_context(symbol, children))
+    return ns.SExpression(symbol, children)
+
+
 def compute_abstraction(
     abstr: stitch_core.Abstraction,
     rewritten: list[ns.SExpression],
@@ -307,6 +345,7 @@ def compute_abstraction(
     s_exprs = partial.handle_variables_at_beginning(s_exprs)
 
     this_abstr, s_exprs = partial.to_abstraction(s_exprs)
+    s_exprs = [handle_splice_seqs(s_expr) for s_expr in s_exprs]
 
     rewritten = s_exprs[: len(rewritten)]
 

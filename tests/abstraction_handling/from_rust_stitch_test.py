@@ -4,7 +4,7 @@ from textwrap import dedent
 import neurosym as ns
 
 from imperative_stitch.compress.manipulate_abstraction import abstraction_calls_to_stubs
-from imperative_stitch.compress.rust_stitch import compress_stitch
+from imperative_stitch.compress.rust_stitch import compress_stitch, handle_splice_seqs
 from imperative_stitch.parser import converter
 from tests.utils import canonicalize, expand_with_slow_tests, small_set_examples
 
@@ -18,18 +18,52 @@ def run_compression_for_testing(code, *, is_pythonm=False, **kwargs):
         )
         for x in result.abstractions
     ]
+    rewritten_raw = result.rewritten
     rewritten = [converter.s_exp_to_python_ast(x) for x in result.rewritten]
     rewritten = [
         abstraction_calls_to_stubs(x, abstr_dict, is_pythonm=is_pythonm)
         for x in rewritten
     ]
-    for x in result.abstractions:
-        print(ns.render_s_expression(x.body.to_ns_s_exp()))
     rewritten = [x.to_python() for x in rewritten]
-    return result.abstractions, [x.to_python() for x in abstractions], rewritten
+    return (
+        result.abstractions,
+        rewritten_raw,
+        [x.to_python() for x in abstractions],
+        rewritten,
+    )
 
 
 class TestConversion(unittest.TestCase):
+
+    def test_basic_seq_splice_seq(self):
+        self.assertEqual(
+            ns.render_s_expression(
+                handle_splice_seqs(
+                    ns.parse_s_expression("(/seq a b (/splice (/seq 1 2 3)) c d)")
+                )
+            ),
+            "(/seq a b 1 2 3 c d)",
+        )
+        self.assertEqual(
+            ns.render_s_expression(
+                handle_splice_seqs(
+                    ns.parse_s_expression(
+                        "(fn_0 (/seq a b (/splice (/seq 1 2 3)) c d))"
+                    )
+                )
+            ),
+            "(fn_0 (/seq a b 1 2 3 c d))",
+        )
+        self.assertEqual(
+            ns.render_s_expression(
+                handle_splice_seqs(
+                    ns.parse_s_expression(
+                        "(fn_0 (/seq a b (/splice (/seq 1 2 3)) c d))"
+                    )
+                )
+            ),
+            "(fn_0 (/seq a b 1 2 3 c d))",
+        )
 
     def test_if_with_no_else(self):
         code = [
@@ -46,7 +80,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        _, abstractions, rewritten = run_compression_for_testing(
+        _, _, abstractions, rewritten = run_compression_for_testing(
             code, iterations=1, max_arity=10
         )
         self.assertEqual(
@@ -78,7 +112,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        _, abstractions, rewritten = run_compression_for_testing(code, iterations=1)
+        _, _, abstractions, rewritten = run_compression_for_testing(code, iterations=1)
         self.assertEqual(
             abstractions,
             ["%3 + %2 + #0 + %1 + 2 + 3"],
@@ -120,7 +154,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        _, abstractions, rewritten = run_compression_for_testing(
+        _, _, abstractions, rewritten = run_compression_for_testing(
             code, iterations=1, max_arity=0
         )
         self.assertEqual(
@@ -166,7 +200,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        _, abstractions, rewritten = run_compression_for_testing(code, iterations=2)
+        _, _, abstractions, rewritten = run_compression_for_testing(code, iterations=2)
         self.assertEqual(
             abstractions,
             [
@@ -217,7 +251,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr], [abstraction_text], rewritten = run_compression_for_testing(
+        [abstr], _, [abstraction_text], rewritten = run_compression_for_testing(
             code, iterations=1
         )
         self.assertEqual(
@@ -274,7 +308,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr], [abstraction_text], rewritten = run_compression_for_testing(
+        [abstr], _, [abstraction_text], rewritten = run_compression_for_testing(
             code, iterations=1
         )
         self.assertEqual(
@@ -339,7 +373,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr], [abstraction_text], rewritten = run_compression_for_testing(
+        [abstr], _, [abstraction_text], rewritten = run_compression_for_testing(
             code, iterations=1, max_arity=10
         )
         self.assertEqual(
@@ -412,7 +446,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr], [abstraction_text], rewritten = run_compression_for_testing(
+        [abstr], _, [abstraction_text], rewritten = run_compression_for_testing(
             code, iterations=1, max_arity=10
         )
         self.assertEqual(
@@ -475,8 +509,13 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr], [abstraction_text], rewritten = run_compression_for_testing(
-            code, iterations=1, max_arity=3
+        [abstr], rewritten_raw, [abstraction_text], rewritten = (
+            run_compression_for_testing(code, iterations=1, max_arity=3)
+        )
+        self.maxDiff = None
+        self.assertEqual(
+            ns.render_s_expression(rewritten_raw[0]),
+            "(Module (/seq (Assign (list (Name &distraction:0 Store)) (Constant i2 None~ConstKind) None~TC) (/splice (fn_0 (Constant i4 None~ConstKind) (Name g_z Load)))) nil)",
         )
         self.assertEqual(
             abstraction_text,
@@ -540,7 +579,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr], [abstraction_text], rewritten = run_compression_for_testing(
+        [abstr], _, [abstraction_text], rewritten = run_compression_for_testing(
             code, iterations=1, max_arity=10
         )
         self.assertEqual(
@@ -614,7 +653,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr], [abstraction_text], rewritten = run_compression_for_testing(
+        [abstr], _, [abstraction_text], rewritten = run_compression_for_testing(
             code, iterations=1, max_arity=10
         )
         self.assertEqual(
@@ -684,7 +723,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr], [abstraction_text], rewritten = run_compression_for_testing(
+        [abstr], _, [abstraction_text], rewritten = run_compression_for_testing(
             code, iterations=1, max_arity=10
         )
         self.assertEqual(
@@ -725,6 +764,244 @@ class TestConversion(unittest.TestCase):
             ],
         )
 
+    def test_no_seq_seq(self):
+        code = [
+            canonicalize(
+                """
+                func
+                function(1, 3 ** 2)
+                x = 2 + 3 + 4
+                """
+            ),
+            canonicalize(
+                """
+                a
+                b
+                c
+                function(1, 3 ** 2)
+                x = 2 + 3 + 4
+                """
+            ),
+        ]
+        [_], rewritten_raw, [_], _ = run_compression_for_testing(
+            code, iterations=1, max_arity=10
+        )
+        for x in rewritten_raw:
+            self.assertNotIn("(/seq (/seq", ns.render_s_expression(x))
+
+    def test_sequence_is_suffix_of_another_metavar(self):
+        code = [
+            canonicalize(
+                """
+                func
+                function(1, 3 ** 2)
+                x = 2 + 3 + 4
+                """
+            ),
+            canonicalize(
+                """
+                a
+                b
+                c
+                function(1, 3 ** 2)
+                x = 2 + 3 + 4
+                """
+            ),
+            canonicalize(
+                """
+                2 + 10 ** 27
+                function(1, 3 ** 2)
+                x = 2 + 3 + 4
+                """
+            ),
+            canonicalize(
+                """
+                u
+                d
+                e
+                function(1, 3 ** 2)
+                x = 2 + 3 + 4
+                """
+            ),
+            canonicalize(
+                """
+                v = 3
+                d
+                e
+                function(1, 3 ** 2)
+                x = 2 + 3 + 4
+                """
+            ),
+        ]
+        [abstr_1, abstr_2], _, [abstraction_text_1, abstraction_text_2], rewritten = (
+            run_compression_for_testing(code, iterations=2, max_arity=10)
+        )
+        self.assertEqual(abstraction_text_1, "function(1, 3 ** 2)\n%1 = 2 + 3 + 4")
+        self.assertEqual(
+            abstr_1.dfa_annotation,
+            {
+                "root": "seqS",
+                "metavars": [],
+                "symvars": ["Name"],
+                "choicevars": [],
+            },
+        )
+        self.assertEqual(abstraction_text_2, "d\ne\nfn_0(__ref__(%1))")
+        self.assertEqual(
+            abstr_2.dfa_annotation,
+            {
+                "root": "seqS",
+                "metavars": [],
+                "symvars": ["Name"],
+                "choicevars": [],
+            },
+        )
+        self.assertEqual(
+            rewritten,
+            [
+                canonicalize(
+                    """
+                    func
+                    fn_0(__ref__(x))
+                    """
+                ),
+                canonicalize(
+                    """
+                    a
+                    b
+                    c
+                    fn_0(__ref__(x))
+                    """
+                ),
+                canonicalize(
+                    """
+                    2 + 10 ** 27
+                    fn_0(__ref__(x))
+                    """
+                ),
+                canonicalize(
+                    """
+                    u
+                    fn_1(__ref__(x))
+                    """
+                ),
+                canonicalize(
+                    """
+                    v = 3
+                    fn_1(__ref__(x))
+                    """
+                ),
+            ],
+        )
+
+    def test_sequence_is_suffix_of_another_choicevar(self):
+        code = [
+            canonicalize(
+                """
+                func
+                function(1, 3 ** 2)
+                x = 2 + 3 + 4
+                """
+            ),
+            canonicalize(
+                """
+                a
+                b
+                c
+                function(1, 3 ** 2)
+                x = 2 + 3 + 4
+                """
+            ),
+            canonicalize(
+                """
+                2 + 10 ** 27
+                function(1, 3 ** 2)
+                x = 2 + 3 + 4
+                """
+            ),
+            canonicalize(
+                """
+                u
+                d
+                e
+                function(1, 3 ** 2)
+                x = 2 + 3 + 4
+                """
+            ),
+            canonicalize(
+                """
+                w = 7
+                v = 3
+                d
+                e
+                function(1, 3 ** 2)
+                x = 2 + 3 + 4
+                """
+            ),
+        ]
+        [abstr_1, abstr_2], _, [abstraction_text_1, abstraction_text_2], rewritten = (
+            run_compression_for_testing(code, iterations=2, max_arity=10)
+        )
+        print("ABC", ns.render_s_expression(abstr_2.body.to_ns_s_exp()))
+        self.assertEqual(abstraction_text_1, "function(1, 3 ** 2)\n%1 = 2 + 3 + 4")
+        self.assertEqual(
+            abstr_1.dfa_annotation,
+            {
+                "root": "seqS",
+                "metavars": [],
+                "symvars": ["Name"],
+                "choicevars": [],
+            },
+        )
+        self.assertEqual(abstraction_text_2, "d\ne\nfn_0(__ref__(%1))")
+        self.assertEqual(
+            abstr_2.dfa_annotation,
+            {
+                "root": "seqS",
+                "metavars": [],
+                "symvars": ["Name"],
+                "choicevars": [],
+            },
+        )
+        self.assertEqual(
+            rewritten,
+            [
+                canonicalize(
+                    """
+                    func
+                    fn_0(__ref__(x))
+                    """
+                ),
+                canonicalize(
+                    """
+                    a
+                    b
+                    c
+                    fn_0(__ref__(x))
+                    """
+                ),
+                canonicalize(
+                    """
+                    2 + 10 ** 27
+                    fn_0(__ref__(x))
+                    """
+                ),
+                canonicalize(
+                    """
+                    u
+                    fn_1(__ref__(x))
+                    """
+                ),
+                canonicalize(
+                    """
+                    w = 7
+                    v = 3
+                    fn_1(__ref__(x))
+                    """
+                ),
+            ],
+        )
+
     def test_no_abstractions(self):
         code = [
             canonicalize(
@@ -739,7 +1016,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [], [], rewritten = run_compression_for_testing(
+        [], _, [], rewritten = run_compression_for_testing(
             code, iterations=3, max_arity=10
         )
         self.assertEqual(rewritten, code)
@@ -755,7 +1032,7 @@ class TestConversion(unittest.TestCase):
                 """
             )
         ]
-        [], [], rewr = run_compression_for_testing(code, iterations=3, max_arity=10)
+        [], _, [], rewr = run_compression_for_testing(code, iterations=3, max_arity=10)
         self.assertEqual(code, rewr)
 
     @expand_with_slow_tests(200, first_fast=3)

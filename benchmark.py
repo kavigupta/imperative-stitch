@@ -8,8 +8,14 @@ with open("vlmaterial-set/human_200.json", "r") as f:
     code = json.load(f)
 
 
-_, abstrs, rewritten = run_compression_for_testing(
-    code, iterations=100, max_arity=4, silent=False, verbose_best=True, is_pythonm=True, use_symvars=False
+_, _, abstrs, rewritten = run_compression_for_testing(
+    code,
+    iterations=100,
+    max_arity=4,
+    silent=False,
+    verbose_best=True,
+    is_pythonm=True,
+    use_symvars=False,
 )
 
 print(sum(len(tokenizer.encode(x)) for x in code))
