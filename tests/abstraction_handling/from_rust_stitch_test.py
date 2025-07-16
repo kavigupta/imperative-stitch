@@ -1,4 +1,5 @@
 import unittest
+import json
 from textwrap import dedent
 
 import neurosym as ns
@@ -1161,10 +1162,16 @@ class TestConversion(unittest.TestCase):
         programs = [canonicalize(x) for x in programs]
         self.assertEqual(rewritten, programs)
 
-    @expand_with_slow_tests(200, first_fast=3)
+    @expand_with_slow_tests(200, first_fast=5)
     def test_smoke_small_set(self, seed):
         if seed == 18 or seed == 102:
             # these take forever. we should look into this.
             return
         programs = small_set_examples()[seed::200]
         self.run_test_for_programs(programs, seed)
+
+    @expand_with_slow_tests(200, first_fast=5)
+    def test_smoke_vlm_human(self, seed):
+        with open("data/vlmaterial-set/human_1000.json", "r") as f:
+            programs = json.load(f)
+        self.run_test_for_programs(programs[seed::200], seed)
