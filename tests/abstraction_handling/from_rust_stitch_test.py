@@ -5,7 +5,10 @@ from textwrap import dedent
 import neurosym as ns
 import numpy as np
 
-from imperative_stitch.compress.rust_stitch import compress_stitch, handle_splice_seqs
+from imperative_stitch.compress.rust_stitch import compress_stitch
+from imperative_stitch.compress.rust_stitch.process_rust_stitch import (
+    handle_splice_seqs,
+)
 from tests.utils import canonicalize, expand_with_slow_tests, small_set_examples
 
 
