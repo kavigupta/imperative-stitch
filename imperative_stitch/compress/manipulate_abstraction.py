@@ -60,18 +60,19 @@ def abstraction_calls_to_stubs(program, abstractions, *, is_pythonm=False):
         result = replace_abstraction_calls(result, replacement)
 
 
-def abstraction_calls_to_bodies(program, abstractions, *, pragmas=False):
+def abstraction_calls_to_bodies(program, abstractions, *, pragmas=False, callback=None):
     """
     Replace all abstraction calls with their bodies.
     """
-    return map_abstraction_calls(
-        program,
-        lambda call: (
-            abstractions[call.tag].substitute_body(call.args, pragmas=pragmas)
-            if call.tag in abstractions
-            else call
-        ),
-    )
+
+    def construct(call):
+        if call.tag in abstractions:
+            if callback is not None:
+                callback(call)
+            return abstractions[call.tag].substitute_body(call.args, pragmas=pragmas)
+        return call
+
+    return map_abstraction_calls(program, construct)
 
 
 def abstraction_calls_to_bodies_recursively(program, abstractions, *, pragmas=False):
@@ -80,6 +81,15 @@ def abstraction_calls_to_bodies_recursively(program, abstractions, *, pragmas=Fa
     """
     result = program
     while True:
-        result = abstraction_calls_to_bodies(result, abstractions, pragmas=pragmas)
-        if not collect_abstraction_calls(result):
+        done = True
+
+        def callback(call):
+            print(call)
+            nonlocal done
+            done = False
+
+        result = abstraction_calls_to_bodies(
+            result, abstractions, pragmas=pragmas, callback=callback
+        )
+        if done:
             return result

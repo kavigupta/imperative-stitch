@@ -492,6 +492,31 @@ class AbstractionRenderingTest(unittest.TestCase):
             "(Module (/seq (fn_1 (Name g_e Load)) (fn_1 (Name g_g Load))) nil)",
         )
 
+    def test_just_expand_one_on_toplevel(self):
+        abstractions = {
+            "fn_1": Abstraction.of(
+                **{
+                    "name": "fn_1",
+                    "body": "(fn_0 #0)",
+                    "arity": 1,
+                    "sym_arity": 0,
+                    "choice_arity": 0,
+                    "dfa_root": "S",
+                    "dfa_symvars": [],
+                    "dfa_metavars": ["E"],
+                    "dfa_choicevars": [],
+                }
+            ),
+        }
+        program = converter.s_exp_to_python_ast(
+            "(Module (/seq (fn_2) (fn_1 (Name g_e Load)) (fn_1 (Name g_g Load))) nil)"
+        )
+        code = abstraction_calls_to_bodies_recursively(program, abstractions)
+        self.assertEqual(
+            ns.render_s_expression(code.to_ns_s_exp()),
+            "(Module (/seq (fn_2) (fn_1 (Name g_e Load)) (fn_1 (Name g_g Load))) nil)",
+        )
+
     def test_body_rendering_multi_with_pragmas(self):
         stub = fn_2.substitute_body(fn_2_args, pragmas=True)
         print(stub.to_python())
