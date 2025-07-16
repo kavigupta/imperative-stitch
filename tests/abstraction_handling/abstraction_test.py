@@ -435,6 +435,31 @@ class AbstractionRenderingTest(unittest.TestCase):
         code = abstraction_calls_to_bodies_recursively(program, abstractions)
         self.assertEqual(code.to_python(), "func(e + e + 0)\nfunc(g + g + 0)")
 
+    def test_expand_recursive_only_one_abstraction(self):
+        abstractions = {
+            "fn_1": Abstraction(
+                name="fn_1",
+                body=converter.s_exp_to_python_ast(
+                    "(List (list (_starred_content #2) (_starred_content #1) (_starred_content #0) (_starred_content (Constant f1.0 None))) Load)"
+                ),
+                arity=3,
+                sym_arity=0,
+                choice_arity=0,
+                dfa_root="E",
+                dfa_symvars=[],
+                dfa_metavars=["E", "E", "E"],
+                dfa_choicevars=[],
+            )
+        }
+        code = "(Module (/seq (fn_0 (fn_1 (Constant f0.008 None) (Constant f0.011 None) (Constant f0.025 None))) (fn_0 (fn_1 (Constant f0.235 None) (Constant f0.076 None) (Constant f0.047 None)))) nil)"
+        code = converter.s_exp_to_python_ast(code)
+        code = abstraction_calls_to_bodies_recursively(code, abstractions)
+        self.maxDiff = None
+        self.assertEqual(
+            ns.render_s_expression(code.to_ns_s_exp()),
+            "(Module (/seq (fn_0 (List (list (_starred_content (Constant f0.025 None)) (_starred_content (Constant f0.011 None)) (_starred_content (Constant f0.008 None)) (_starred_content (Constant f1.0 None))) Load)) (fn_0 (List (list (_starred_content (Constant f0.047 None)) (_starred_content (Constant f0.076 None)) (_starred_content (Constant f0.235 None)) (_starred_content (Constant f1.0 None))) Load))) nil)",
+        )
+
     def test_expand_unique_ids(self):
         # This test checks that ids are reset to be unique when a body containing a stub is expanded.
         # Related to test_body_expanded_twice.
@@ -466,6 +491,56 @@ class AbstractionRenderingTest(unittest.TestCase):
         self.assertEqual(e.to_python(), "e")
         self.assertEqual(g.to_python(), "g")
         self.assertNotEqual(e_call.handle, g_call.handle)
+
+    def test_just_expand_outside(self):
+        abstractions = {
+            "fn_1": Abstraction.of(
+                **{
+                    "name": "fn_1",
+                    "body": "(fn_0 #0)",
+                    "arity": 1,
+                    "sym_arity": 0,
+                    "choice_arity": 0,
+                    "dfa_root": "S",
+                    "dfa_symvars": [],
+                    "dfa_metavars": ["E"],
+                    "dfa_choicevars": [],
+                }
+            ),
+        }
+        program = converter.s_exp_to_python_ast(
+            "(Module (/seq (fn_1 (Name g_e Load)) (fn_1 (Name g_g Load))) nil)"
+        )
+        code = abstraction_calls_to_bodies_recursively(program, abstractions)
+        self.assertEqual(
+            ns.render_s_expression(code.to_ns_s_exp()),
+            "(Module (/seq (fn_0 (Name g_e Load)) (fn_0 (Name g_g Load))) nil)",
+        )
+
+    def test_just_expand_one_on_toplevel(self):
+        abstractions = {
+            "fn_1": Abstraction.of(
+                **{
+                    "name": "fn_1",
+                    "body": "(fn_0 #0)",
+                    "arity": 1,
+                    "sym_arity": 0,
+                    "choice_arity": 0,
+                    "dfa_root": "S",
+                    "dfa_symvars": [],
+                    "dfa_metavars": ["E"],
+                    "dfa_choicevars": [],
+                }
+            ),
+        }
+        program = converter.s_exp_to_python_ast(
+            "(Module (/seq (fn_2) (fn_1 (Name g_e Load)) (fn_1 (Name g_g Load))) nil)"
+        )
+        code = abstraction_calls_to_bodies_recursively(program, abstractions)
+        self.assertEqual(
+            ns.render_s_expression(code.to_ns_s_exp()),
+            "(Module (/seq (fn_2) (fn_0 (Name g_e Load)) (fn_0 (Name g_g Load))) nil)",
+        )
 
     def test_body_rendering_multi_with_pragmas(self):
         stub = fn_2.substitute_body(fn_2_args, pragmas=True)

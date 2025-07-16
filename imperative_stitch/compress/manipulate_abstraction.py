@@ -34,11 +34,9 @@ def map_abstraction_calls(program, replace_fn):
     """
     Map each abstraction call through the given function.
     """
-    handle_to_replacement = collect_abstraction_calls(program)
-    handle_to_replacement = {
-        handle: replace_fn(call) for handle, call in handle_to_replacement.items()
-    }
-    return replace_abstraction_calls(program, handle_to_replacement)
+    return program.map(
+        lambda x: (replace_fn(x) if isinstance(x, AbstractionCallAST) else x)
+    )
 
 
 def abstraction_calls_to_stubs(program, abstractions, *, is_pythonm=False):
@@ -60,14 +58,19 @@ def abstraction_calls_to_stubs(program, abstractions, *, is_pythonm=False):
         result = replace_abstraction_calls(result, replacement)
 
 
-def abstraction_calls_to_bodies(program, abstractions, *, pragmas=False):
+def abstraction_calls_to_bodies(program, abstractions, *, pragmas=False, callback=None):
     """
     Replace all abstraction calls with their bodies.
     """
-    return map_abstraction_calls(
-        program,
-        lambda call: abstractions[call.tag].substitute_body(call.args, pragmas=pragmas),
-    )
+
+    def construct(call):
+        if call.tag in abstractions:
+            if callback is not None:
+                callback()
+            return abstractions[call.tag].substitute_body(call.args, pragmas=pragmas)
+        return call
+
+    return map_abstraction_calls(program, construct)
 
 
 def abstraction_calls_to_bodies_recursively(program, abstractions, *, pragmas=False):
@@ -75,7 +78,20 @@ def abstraction_calls_to_bodies_recursively(program, abstractions, *, pragmas=Fa
     Replace all abstraction calls with their bodies, recursively.
     """
     result = program
-    while True:
-        result = abstraction_calls_to_bodies(result, abstractions, pragmas=pragmas)
-        if not collect_abstraction_calls(result):
+    # We will keep iterating until we reach a fixed point.
+    # This is necessary because the bodies may contain more abstraction calls.
+    # This is a sufficient number of iterations, since each abstraction call is rendered when ruig str()
+    for _ in range(len(str(program))):
+        done = True
+
+        def callback():
+            nonlocal done
+            done = False
+
+        result = abstraction_calls_to_bodies(
+            result, abstractions, pragmas=pragmas, callback=callback
+        )
+        if done:
             return result
+
+    raise RuntimeError("Abstraction calls to bodies recursively did not converge")
