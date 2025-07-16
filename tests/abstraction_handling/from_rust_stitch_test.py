@@ -3,9 +3,6 @@ from textwrap import dedent
 
 import neurosym as ns
 
-from imperative_stitch.compress.manipulate_abstraction import (
-    abstraction_calls_to_bodies_recursively,
-)
 from imperative_stitch.compress.rust_stitch import compress_stitch, handle_splice_seqs
 from tests.utils import canonicalize, expand_with_slow_tests, small_set_examples
 
