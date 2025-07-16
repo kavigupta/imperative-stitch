@@ -2,6 +2,7 @@ import unittest
 from textwrap import dedent
 
 import neurosym as ns
+import numpy as np
 
 from imperative_stitch.compress.rust_stitch import compress_stitch, handle_splice_seqs
 from tests.utils import canonicalize, expand_with_slow_tests, small_set_examples
@@ -1145,13 +1146,25 @@ class TestConversion(unittest.TestCase):
             ],
         )
 
+    def run_test_for_programs(self, programs, seed):
+        # not ascii
+        if any(not x.isascii() for x in programs):
+            return
+        result = self.run_compression_for_testing(programs, iterations=2, max_arity=1)
+        rng = np.random.RandomState(seed)
+        abstr_names = list(result.abstr_dict)
+        rng.shuffle(abstr_names)
+        for name in abstr_names:
+            result = result.inline_abstractions(abstraction_names=[name])
+        rewritten = result.rewritten_python()
+        rewritten = [canonicalize(x) for x in rewritten]
+        programs = [canonicalize(x) for x in programs]
+        self.assertEqual(rewritten, programs)
+
     @expand_with_slow_tests(200, first_fast=3)
-    def test_smoke(self, seed):
+    def test_smoke_small_set(self, seed):
         if seed == 18 or seed == 102:
             # these take forever. we should look into this.
             return
         programs = small_set_examples()[seed::200]
-        # not ascii
-        if any(not x.isascii() for x in programs):
-            return
-        self.run_compression_for_testing(programs, iterations=2, max_arity=1)
+        self.run_test_for_programs(programs, seed)
