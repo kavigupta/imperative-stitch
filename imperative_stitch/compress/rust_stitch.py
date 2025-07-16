@@ -245,7 +245,7 @@ class PartialAbstraction:
             elif kind == "%":
                 symvar_indices.append(i)
             else:
-                assert kind == None
+                assert kind is None
 
         all_indices = metavar_indices + symvar_indices + choicevar_indices
         remapping_dict = {
@@ -363,8 +363,7 @@ def handle_splice_seqs_in_list_context(
             raise ValueError(
                 f"Unexpected splice child: {ns.render_s_expression(splice_child)}"
             )
-        else:
-            new_children.append(child)
+        new_children.append(child)
     return head, new_children
 
 

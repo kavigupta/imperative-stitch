@@ -15,7 +15,7 @@ def run_compression_for_testing(*args, **kwargs):
 
 class TestConversion(unittest.TestCase):
 
-    def run_compression_for_testing(self, code, *, is_pythonm=False, **kwargs):
+    def run_compression_for_testing(self, code, **kwargs):
         result = compress_stitch(code, **kwargs)
         maxDiff, self.maxDiff = self.maxDiff, None
         self.assertEqual(
@@ -1164,7 +1164,7 @@ class TestConversion(unittest.TestCase):
 
     @expand_with_slow_tests(200, first_fast=5)
     def test_smoke_small_set(self, seed):
-        if seed == 18 or seed == 102:
+        if seed in [18, 102]:
             # these take forever. we should look into this.
             return
         programs = small_set_examples()[seed::200]
