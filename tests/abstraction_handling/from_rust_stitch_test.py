@@ -1119,6 +1119,32 @@ class TestConversion(unittest.TestCase):
             ],
         )
 
+    def test_nested_abstractions_inline_one_another_case(self):
+        code = [
+            canonicalize(
+                """
+                2 + 3 + 4 + [0.025, 0.011, 0.008, 1.0]
+                2 + 3 + 4 + [0.047, 0.076, 0.235, 1.0]
+                """
+            ),
+            canonicalize(
+                """
+                2 + 3 + 4 + 0.258
+                [1.0, 1.0, 1.0, 1.0]
+                [0.0, 0.0, 0.0, 1.0]
+                """
+            ),
+        ]
+        result = self.run_compression_for_testing(code, iterations=2, max_arity=4)
+        result = result.inline_abstractions(abstraction_names=["fn_1"])
+        self.assertEqual(
+            result.rewritten_python(),
+            [
+                "fn_0(__code__('[0.025, 0.011, 0.008, 1.0]'))\nfn_0(__code__('[0.047, 0.076, 0.235, 1.0]'))",
+                "fn_0(__code__('0.258'))\n[1.0, 1.0, 1.0, 1.0]\n[0.0, 0.0, 0.0, 1.0]",
+            ],
+        )
+
     @expand_with_slow_tests(200, first_fast=3)
     def test_smoke(self, seed):
         if seed == 18 or seed == 102:
