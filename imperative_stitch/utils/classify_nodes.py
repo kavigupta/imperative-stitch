@@ -4,7 +4,7 @@ import json
 import neurosym as ns
 from frozendict import frozendict
 
-SYMBOL_TYPES = ("Name", "NullableName", "NameStr", "NullableNameStr")
+SYMBOL_TYPES = ("Name", "NameStr", "NullableNameStr")
 
 
 def export_dfa(*, abstrs=frozendict({})):
