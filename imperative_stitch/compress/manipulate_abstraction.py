@@ -68,7 +68,7 @@ def abstraction_calls_to_bodies(program, abstractions, *, pragmas=False, callbac
     def construct(call):
         if call.tag in abstractions:
             if callback is not None:
-                callback(call)
+                callback()
             return abstractions[call.tag].substitute_body(call.args, pragmas=pragmas)
         return call
 
@@ -83,7 +83,7 @@ def abstraction_calls_to_bodies_recursively(program, abstractions, *, pragmas=Fa
     while True:
         done = True
 
-        def callback(call):
+        def callback():
             nonlocal done
             done = False
 
