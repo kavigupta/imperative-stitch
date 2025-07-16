@@ -489,7 +489,7 @@ class AbstractionRenderingTest(unittest.TestCase):
         code = abstraction_calls_to_bodies_recursively(program, abstractions)
         self.assertEqual(
             ns.render_s_expression(code.to_ns_s_exp()),
-            "(Module (/seq (fn_1 (Name g_e Load)) (fn_1 (Name g_g Load))) nil)",
+            "(Module (/seq (fn_0 (Name g_e Load)) (fn_0 (Name g_g Load))) nil)",
         )
 
     def test_just_expand_one_on_toplevel(self):
@@ -514,7 +514,7 @@ class AbstractionRenderingTest(unittest.TestCase):
         code = abstraction_calls_to_bodies_recursively(program, abstractions)
         self.assertEqual(
             ns.render_s_expression(code.to_ns_s_exp()),
-            "(Module (/seq (fn_2) (fn_1 (Name g_e Load)) (fn_1 (Name g_g Load))) nil)",
+            "(Module (/seq (fn_2) (fn_0 (Name g_e Load)) (fn_0 (Name g_g Load))) nil)",
         )
 
     def test_body_rendering_multi_with_pragmas(self):
