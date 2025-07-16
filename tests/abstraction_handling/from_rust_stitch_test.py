@@ -26,12 +26,7 @@ class TestConversion(unittest.TestCase):
             ],
         )
         self.maxDiff = maxDiff
-        return (
-            result.abstractions,
-            [ns.render_s_expression(x.to_ns_s_exp()) for x in result.rewritten],
-            result.abstractions_python(is_pythonm=is_pythonm),
-            result.rewritten_python(is_pythonm=is_pythonm),
-        )
+        return result
 
     def test_basic_seq_splice_seq(self):
         self.assertEqual(
@@ -78,15 +73,15 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        _, _, abstractions, rewritten = self.run_compression_for_testing(
+        result = self.run_compression_for_testing(
             code, iterations=1, max_arity=10
         )
         self.assertEqual(
-            abstractions,
+            result.abstractions_python(),
             ["if x > 0:\n    %1 = 2"],
         )
         self.assertEqual(
-            rewritten,
+            result.rewritten_python(),
             [
                 canonicalize("fn_0(__ref__(y))"),
                 canonicalize("fn_0(__ref__(y))"),
@@ -110,15 +105,15 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        _, _, abstractions, rewritten = self.run_compression_for_testing(
+        result = self.run_compression_for_testing(
             code, iterations=1
         )
         self.assertEqual(
-            abstractions,
+            result.abstractions_python(),
             ["%3 + %2 + #0 + %1 + 2 + 3"],
         )
         self.assertEqual(
-            rewritten,
+            result.rewritten_python(),
             [
                 canonicalize(
                     """
@@ -154,15 +149,15 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        _, _, abstractions, rewritten = self.run_compression_for_testing(
+        result = self.run_compression_for_testing(
             code, iterations=1, max_arity=0
         )
         self.assertEqual(
-            abstractions,
+            result.abstractions_python(),
             ["%3 + %3 + %3 + %2 + %2 + %1"],
         )
         self.assertEqual(
-            rewritten,
+            result.rewritten_python(),
             [
                 canonicalize(
                     """
@@ -200,18 +195,18 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        _, _, abstractions, rewritten = self.run_compression_for_testing(
+        result = self.run_compression_for_testing(
             code, iterations=2
         )
         self.assertEqual(
-            abstractions,
+            result.abstractions_python(),
             [
                 "%3 + %2 + #0 + %1 + 2 + 3",
                 "fn_0(__code__('#0'), __ref__(%3), __ref__(%2), __ref__(%1)) + 83",
             ],
         )
         self.assertEqual(
-            rewritten,
+            result.rewritten_python(),
             [
                 canonicalize(
                     """
@@ -253,9 +248,11 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr], _, [abstraction_text], rewritten = self.run_compression_for_testing(
+        result = self.run_compression_for_testing(
             code, iterations=1
         )
+        [abstraction_text] = result.abstractions_python()
+        [abstr] = result.abstractions
         self.assertEqual(
             abstraction_text,
             dedent(
@@ -270,7 +267,7 @@ class TestConversion(unittest.TestCase):
             {"root": "seqS", "metavars": ["E", "E"], "symvars": [], "choicevars": []},
         )
         self.assertEqual(
-            rewritten,
+            result.rewritten_python(),
             [
                 canonicalize("fn_0(__code__('4'), __code__('z'))"),
                 canonicalize("fn_0(__code__('4'), __code__('z2'))"),
@@ -310,9 +307,11 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr], _, [abstraction_text], rewritten = self.run_compression_for_testing(
+        result = self.run_compression_for_testing(
             code, iterations=1
         )
+        [abstraction_text] = result.abstractions_python()
+        [abstr] = result.abstractions
         self.assertEqual(
             abstraction_text,
             dedent(
@@ -335,7 +334,7 @@ class TestConversion(unittest.TestCase):
             },
         )
         self.assertEqual(
-            rewritten,
+            result.rewritten_python(),
             [
                 canonicalize("fn_0(__ref__(y), __code__('y = 2'))"),
                 canonicalize("fn_0(__ref__(y), __code__('a = 7\\ny = 2'))"),
@@ -375,9 +374,11 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr], _, [abstraction_text], rewritten = self.run_compression_for_testing(
+        result = self.run_compression_for_testing(
             code, iterations=1, max_arity=10
         )
+        [abstraction_text] = result.abstractions_python()
+        [abstr] = result.abstractions
         self.assertEqual(
             abstraction_text,
             dedent(
@@ -400,7 +401,7 @@ class TestConversion(unittest.TestCase):
             },
         )
         self.assertEqual(
-            rewritten,
+            result.rewritten_python(),
             [
                 canonicalize(
                     "fn_0(__code__('3'), __code__('23'), __code__('1000'), __ref__(y), __code__('y = 2'))"
@@ -448,9 +449,11 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr], _, [abstraction_text], rewritten = self.run_compression_for_testing(
+        result = self.run_compression_for_testing(
             code, iterations=1, max_arity=10
         )
+        [abstraction_text] = result.abstractions_python()
+        [abstr] = result.abstractions
         self.assertEqual(
             abstraction_text,
             dedent(
@@ -473,7 +476,7 @@ class TestConversion(unittest.TestCase):
             },
         )
         self.assertEqual(
-            rewritten,
+            result.rewritten_python(),
             [
                 canonicalize(
                     "fn_0(__code__('23'), __code__('1000'), __ref__(y), __code__('y = 2'))"
@@ -511,10 +514,11 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr], rewritten_raw, [abstraction_text], rewritten = (
-            self.run_compression_for_testing(code, iterations=1, max_arity=3)
-        )
+        result = self.run_compression_for_testing(code, iterations=1, max_arity=3)
         self.maxDiff = None
+        rewritten_raw = [ns.render_s_expression(x.to_ns_s_exp()) for x in result.rewritten]
+        [abstraction_text] = result.abstractions_python()
+        [abstr] = result.abstractions
         self.assertEqual(
             rewritten_raw[0],
             "(Module (/seq (Assign (list (Name &distraction:0 Store)) (Constant i2 None) None) (/splice (fn_0 (Constant i4 None) (Name g_z Load)))) nil)",
@@ -533,7 +537,7 @@ class TestConversion(unittest.TestCase):
             {"root": "seqS", "metavars": ["E", "E"], "symvars": [], "choicevars": []},
         )
         self.assertEqual(
-            rewritten,
+            result.rewritten_python(),
             [
                 canonicalize(
                     """
@@ -581,9 +585,11 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr], _, [abstraction_text], rewritten = self.run_compression_for_testing(
+        result = self.run_compression_for_testing(
             code, iterations=1, max_arity=10
         )
+        [abstraction_text] = result.abstractions_python()
+        [abstr] = result.abstractions
         self.assertEqual(
             abstraction_text,
             dedent(
@@ -598,7 +604,7 @@ class TestConversion(unittest.TestCase):
             {"root": "seqS", "metavars": ["E", "E"], "symvars": [], "choicevars": []},
         )
         self.assertEqual(
-            rewritten,
+            result.rewritten_python(),
             [
                 canonicalize(
                     """
@@ -655,9 +661,11 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr], _, [abstraction_text], rewritten = self.run_compression_for_testing(
+        result = self.run_compression_for_testing(
             code, iterations=1, max_arity=10
         )
+        [abstraction_text] = result.abstractions_python()
+        [abstr] = result.abstractions
         self.assertEqual(
             abstraction_text,
             dedent(
@@ -680,7 +688,7 @@ class TestConversion(unittest.TestCase):
             },
         )
         self.assertEqual(
-            rewritten,
+            result.rewritten_python(),
             [
                 canonicalize(
                     """
@@ -725,9 +733,11 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr], _, [abstraction_text], rewritten = self.run_compression_for_testing(
+        result = self.run_compression_for_testing(
             code, iterations=1, max_arity=10
         )
+        [abstraction_text] = result.abstractions_python()
+        [abstr] = result.abstractions
         self.assertEqual(
             abstraction_text,
             dedent(
@@ -742,7 +752,7 @@ class TestConversion(unittest.TestCase):
             {"root": "seqS", "metavars": ["E", "E"], "symvars": [], "choicevars": []},
         )
         self.assertEqual(
-            rewritten,
+            result.rewritten_python(),
             [
                 canonicalize(
                     """
@@ -785,10 +795,10 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [_], rewritten_raw, [_], _ = self.run_compression_for_testing(
+        result = self.run_compression_for_testing(
             code, iterations=1, max_arity=10
         )
-        for x in rewritten_raw:
+        for x in [ns.render_s_expression(x.to_ns_s_exp()) for x in result.rewritten]:
             self.assertNotIn("(/seq (/seq", x)
 
     def test_sequence_is_suffix_of_another_metavar(self):
@@ -835,12 +845,12 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr_1, abstr_2], _, [abstraction_text_1, abstraction_text_2], rewritten = (
-            self.run_compression_for_testing(code, iterations=2, max_arity=10)
-        )
-        self.assertEqual(abstraction_text_1, "function(1, 3 ** 2)\n%1 = 2 + 3 + 4")
+        result = self.run_compression_for_testing(code, iterations=2, max_arity=10)
+        [abstraction_text1, abstraction_text2] = result.abstractions_python()
+        [abstr1, abstr2] = result.abstractions
+        self.assertEqual(abstraction_text1, "function(1, 3 ** 2)\n%1 = 2 + 3 + 4")
         self.assertEqual(
-            abstr_1.dfa_annotation,
+            abstr1.dfa_annotation,
             {
                 "root": "seqS",
                 "metavars": [],
@@ -848,9 +858,9 @@ class TestConversion(unittest.TestCase):
                 "choicevars": [],
             },
         )
-        self.assertEqual(abstraction_text_2, "d\ne\nfn_0(__ref__(%1))")
+        self.assertEqual(abstraction_text2, "d\ne\nfn_0(__ref__(%1))")
         self.assertEqual(
-            abstr_2.dfa_annotation,
+            abstr2.dfa_annotation,
             {
                 "root": "seqS",
                 "metavars": [],
@@ -859,7 +869,7 @@ class TestConversion(unittest.TestCase):
             },
         )
         self.assertEqual(
-            rewritten,
+            result.rewritten_python(),
             [
                 canonicalize(
                     """
@@ -941,13 +951,13 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [abstr_1, abstr_2], _, [abstraction_text_1, abstraction_text_2], rewritten = (
-            self.run_compression_for_testing(code, iterations=2, max_arity=10)
-        )
-        print("ABC", ns.render_s_expression(abstr_2.body.to_ns_s_exp()))
-        self.assertEqual(abstraction_text_1, "function(1, 3 ** 2)\n%1 = 2 + 3 + 4")
+        result = self.run_compression_for_testing(code, iterations=2, max_arity=10)
+        [abstraction_text1, abstraction_text2] = result.abstractions_python()
+        [abstr1, abstr2] = result.abstractions
+        print("ABC", ns.render_s_expression(abstr2.body.to_ns_s_exp()))
+        self.assertEqual(abstraction_text1, "function(1, 3 ** 2)\n%1 = 2 + 3 + 4")
         self.assertEqual(
-            abstr_1.dfa_annotation,
+            abstr1.dfa_annotation,
             {
                 "root": "seqS",
                 "metavars": [],
@@ -955,9 +965,9 @@ class TestConversion(unittest.TestCase):
                 "choicevars": [],
             },
         )
-        self.assertEqual(abstraction_text_2, "d\ne\nfn_0(__ref__(%1))")
+        self.assertEqual(abstraction_text2, "d\ne\nfn_0(__ref__(%1))")
         self.assertEqual(
-            abstr_2.dfa_annotation,
+            abstr2.dfa_annotation,
             {
                 "root": "seqS",
                 "metavars": [],
@@ -966,7 +976,7 @@ class TestConversion(unittest.TestCase):
             },
         )
         self.assertEqual(
-            rewritten,
+            result.rewritten_python(),
             [
                 canonicalize(
                     """
@@ -1018,10 +1028,10 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        [], _, [], rewritten = self.run_compression_for_testing(
+        result = self.run_compression_for_testing(
             code, iterations=3, max_arity=10
         )
-        self.assertEqual(rewritten, code)
+        self.assertEqual(result.rewritten_python(), code)
 
     def test_empty_exception(self):
         code = [
@@ -1034,10 +1044,10 @@ class TestConversion(unittest.TestCase):
                 """
             )
         ]
-        [], _, [], rewr = self.run_compression_for_testing(
+        result = self.run_compression_for_testing(
             code, iterations=3, max_arity=10
         )
-        self.assertEqual(code, rewr)
+        self.assertEqual(code, result.rewritten_python())
 
     def test_nested_abstractions_multiused(self):
         # See tests/abstraction_handling/abstraction_test.py::AbstractionRenderingTest::test_body_expanded_twice
@@ -1055,9 +1065,10 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        _, _, [a1, a2], rewritten = self.run_compression_for_testing(
+        result = self.run_compression_for_testing(
             code, iterations=2, max_arity=2
         )
+        [a1, a2] = result.abstractions_python()
         self.assertEqual(
             a1,
             dedent(
@@ -1075,7 +1086,7 @@ class TestConversion(unittest.TestCase):
             ).strip(),
         )
         self.assertEqual(
-            rewritten,
+            result.rewritten_python(),
             [
                 canonicalize(
                     """
