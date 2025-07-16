@@ -67,8 +67,7 @@ class SequenceTest(unittest.TestCase):
         assertSameCode(
             self,
             abstraction_calls_to_stubs(
-                converter.s_exp_to_python_ast(self.ctx_in_seq),
-                self.abtractions,
+                converter.s_exp_to_python_ast(self.ctx_in_seq), self.abtractions
             ).to_python(),
             """
             fn_1(__ref__(n), __ref__(s))
@@ -80,8 +79,7 @@ class SequenceTest(unittest.TestCase):
         assertSameCode(
             self,
             abstraction_calls_to_stubs(
-                converter.s_exp_to_python_ast(self.ctx_rooted),
-                self.abtractions,
+                converter.s_exp_to_python_ast(self.ctx_rooted), self.abtractions
             ).to_python(),
             """
             if x:
@@ -109,9 +107,7 @@ class SequenceTest(unittest.TestCase):
         parsed = replace_abstraction_calls(parsed, {handle: new_abstraction_call})
         assertSameCode(
             self,
-            abstraction_calls_to_stubs(
-                parsed, self.abtractions, is_pythonm=False
-            ).to_python(),
+            abstraction_calls_to_stubs(parsed, self.abtractions).to_python(),
             """
             if x:
                 fn_1(__ref__(u), __ref__(v))
@@ -122,8 +118,7 @@ class SequenceTest(unittest.TestCase):
         assertSameCode(
             self,
             abstraction_calls_to_bodies(
-                converter.s_exp_to_python_ast(self.ctx_in_seq),
-                self.abtractions,
+                converter.s_exp_to_python_ast(self.ctx_in_seq), self.abtractions
             ).to_python(),
             """
             n = int(input())
@@ -153,8 +148,7 @@ class SequenceTest(unittest.TestCase):
         assertSameCode(
             self,
             abstraction_calls_to_bodies(
-                converter.s_exp_to_python_ast(self.ctx_rooted),
-                self.abtractions,
+                converter.s_exp_to_python_ast(self.ctx_rooted), self.abtractions
             ).to_python(),
             """
             if x:
@@ -396,8 +390,7 @@ class MultiKindTest(unittest.TestCase):
         assertSameCode(
             self,
             abstraction_calls_to_stubs(
-                converter.s_exp_to_python_ast(self.ctx_no_choicevar),
-                self.abstractions,
+                converter.s_exp_to_python_ast(self.ctx_no_choicevar), self.abstractions
             ).to_python(),
             """
             fn_1(__code__('4 * 3'), __ref__(x), __ref__(y), __code__(''))
@@ -542,8 +535,7 @@ class MultiKindTest(unittest.TestCase):
 
     def test_stub_fn2_1(self):
         out = abstraction_calls_to_stubs(
-            converter.s_exp_to_python_ast(self.ctx_for_fn2_1),
-            self.abstractions,
+            converter.s_exp_to_python_ast(self.ctx_for_fn2_1), self.abstractions
         ).to_python()
         self.maxDiff = None
         assertSameCode(
