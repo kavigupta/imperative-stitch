@@ -1,6 +1,8 @@
 import copy
+from functools import lru_cache
 import json
 from dataclasses import dataclass
+import tempfile
 from typing import List
 
 import neurosym as ns
@@ -470,7 +472,7 @@ def compress_stitch(pythons, *, use_symvars=True, **kwargs) -> CompressionResult
     compressed = stitch_core.compress(
         s_exps,
         cost_prim=json.dumps(cost_prim).replace(" ", ""),
-        tdfa_json_path="../neurosym-lib/test_data/dfa.json",
+        tdfa_json_path=dfa_path(),
         tdfa_root="M",
         valid_metavars='["S","E","seqS"]',
         valid_roots='["S","E","seqS"]',
@@ -479,6 +481,14 @@ def compress_stitch(pythons, *, use_symvars=True, **kwargs) -> CompressionResult
         **kwargs,
     )
     return process_rust_stitch(compressed)
+
+
+@lru_cache
+def dfa_path():
+    path = tempfile.mktemp(suffix=".json")
+    with open(path, "w") as f:
+        json.dump(ns.python_dfa(), f)
+    return path
 
 
 def convert_all_to_annotated_s_exps(pythons):
