@@ -67,3 +67,9 @@ class AbstractionCallAST(ns.PythonAST):
         return fn(
             AbstractionCallAST(self.tag, [x.map(fn) for x in self.args], self.handle)
         )
+
+    def _replace_with_substitute(self, arguments):
+        del arguments  # no need for arguments in this case, since this is not a variable
+        # all we are doing is replacing the handle with a new one, so that we can
+        # distinguish between different calls to the same abstraction
+        return type(self)(self.tag, self.args, uuid.uuid4())
