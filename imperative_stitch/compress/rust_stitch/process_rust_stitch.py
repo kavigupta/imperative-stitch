@@ -1,7 +1,9 @@
+import copy
 from dataclasses import dataclass
 from typing import List
 
 import neurosym as ns
+import stitch_core
 
 from imperative_stitch.compress.abstraction import Abstraction
 from imperative_stitch.compress.rust_stitch.compression_result import CompressionResult
