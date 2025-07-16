@@ -1,5 +1,5 @@
-import unittest
 import json
+import unittest
 from textwrap import dedent
 
 import neurosym as ns

@@ -1,8 +1,8 @@
 import copy
-from functools import lru_cache
 import json
-from dataclasses import dataclass
 import tempfile
+from dataclasses import dataclass
+from functools import lru_cache
 from typing import List
 
 import neurosym as ns
