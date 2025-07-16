@@ -1,7 +1,7 @@
+import ast
 import copy
 import unittest
 from textwrap import dedent
-import ast
 
 import neurosym as ns
 from parameterized import parameterized
