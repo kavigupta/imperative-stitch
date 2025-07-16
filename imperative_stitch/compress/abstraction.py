@@ -275,6 +275,20 @@ class Abstraction:
             "choicevars": self.dfa_choicevars,
         }
 
+    def __repr__(self):
+        this_as_dict = {}
+        for k, v in self.__dict__.items():
+            if k != "body":
+                this_as_dict[k] = repr(v)
+                continue
+            v = ns.render_s_expression(v.to_ns_s_exp())
+            this_as_dict[k] = f"converter.s_exp_to_python_ast({v!r})"
+        return (
+            "Abstraction("
+            + ", ".join(f"{k}={v}" for k, v in this_as_dict.items())
+            + ")"
+        )
+
 
 def handle_abstractions(name_to_abstr):
     """
