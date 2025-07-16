@@ -27,8 +27,7 @@ class TestConversion(unittest.TestCase):
             )
             for x in result.abstractions
         ]
-        rewritten_raw = result.rewritten
-        rewritten = [converter.s_exp_to_python_ast(x) for x in result.rewritten]
+        rewritten = result.rewritten
         inlined = [
             canonicalize(
                 abstraction_calls_to_bodies_recursively(program, abstr_dict).to_python()
@@ -45,7 +44,7 @@ class TestConversion(unittest.TestCase):
         rewritten = [x.to_python() for x in rewritten]
         return (
             result.abstractions,
-            rewritten_raw,
+            [ns.render_s_expression(x.to_ns_s_exp()) for x in result.rewritten],
             [x.to_python() for x in abstractions],
             rewritten,
         )
@@ -533,8 +532,8 @@ class TestConversion(unittest.TestCase):
         )
         self.maxDiff = None
         self.assertEqual(
-            ns.render_s_expression(rewritten_raw[0]),
-            "(Module (/seq (Assign (list (Name &distraction:0 Store)) (Constant i2 None~ConstKind) None~TC) (/splice (fn_0 (Constant i4 None~ConstKind) (Name g_z Load)))) nil)",
+            rewritten_raw[0],
+            "(Module (/seq (Assign (list (Name &distraction:0 Store)) (Constant i2 None) None) (/splice (fn_0 (Constant i4 None) (Name g_z Load)))) nil)",
         )
         self.assertEqual(
             abstraction_text,
@@ -806,7 +805,7 @@ class TestConversion(unittest.TestCase):
             code, iterations=1, max_arity=10
         )
         for x in rewritten_raw:
-            self.assertNotIn("(/seq (/seq", ns.render_s_expression(x))
+            self.assertNotIn("(/seq (/seq", x)
 
     def test_sequence_is_suffix_of_another_metavar(self):
         code = [

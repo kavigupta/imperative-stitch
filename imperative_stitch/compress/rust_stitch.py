@@ -7,13 +7,14 @@ import neurosym as ns
 import stitch_core
 
 from imperative_stitch.compress.abstraction import Abstraction
+from imperative_stitch.parser import converter
 from imperative_stitch.utils.classify_nodes import SYMBOL_TYPES
 
 
 @dataclass
 class CompressionResult:
     abstractions: list[Abstraction]
-    rewritten: list[ns.SExpression]
+    rewritten: list[ns.PythonAST]
 
 
 @dataclass
@@ -261,6 +262,7 @@ def process_rust_stitch(
             other_abstractions[0], rewritten, other_abstractions[1:]
         )
         abstractions.append(abstr)
+    rewritten = [converter.s_exp_to_python_ast(x) for x in rewritten]
     return CompressionResult(abstractions, rewritten)
 
 
