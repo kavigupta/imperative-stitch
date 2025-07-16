@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import List
 
 import neurosym as ns
@@ -80,7 +80,7 @@ class Abstraction:
         sym_arity=None,
         choice_arity=None,
     ):
-        if isinstance(body, str):
+        if isinstance(body, (str, ns.SExpression)):
             body = converter.s_exp_to_python_ast(body)
         if arity is not None:
             assert arity == len(dfa_metavars)
@@ -109,6 +109,9 @@ class Abstraction:
         assert self.choice_arity == len(self.dfa_choicevars)
 
         assert isinstance(self.body, ns.PythonAST), self.body
+
+    def map_body(self, fn):
+        return replace(self, body=fn(self.body))
 
     def process_arguments(self, arguments):
         """
@@ -259,6 +262,18 @@ class Abstraction:
         arguments = {x: i for i, x in enumerate(arguments)}
         vars_in_order = self.variables_in_order(node_ordering, previous_abstractions)
         return [arguments[x] for x in vars_in_order]
+
+    @property
+    def dfa_annotation(self):
+        """
+        Return the DFA notation of this abstraction.
+        """
+        return {
+            "root": self.dfa_root,
+            "metavars": self.dfa_metavars,
+            "symvars": self.dfa_symvars,
+            "choicevars": self.dfa_choicevars,
+        }
 
     def __repr__(self):
         this_as_dict = {}
