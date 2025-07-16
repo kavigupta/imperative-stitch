@@ -113,7 +113,7 @@ class PartialAbstraction:
 
         return [handle_rooted_non_eta_long(rewr) for rewr in rewritten]
 
-    def extract_symvars(self, rewritten: list[ns.SExpression]) -> list[ns.SExpression]:
+    def extract_symvars(self):
         """
         Remove "metavariables" that are symbols (symbol Name) to the symvar_syms.
 
@@ -125,11 +125,8 @@ class PartialAbstraction:
                 continue
             assert self.kinds_each[i] == "#", "Should be a metavariable at this point."
             self.kinds_each[i] = "%"
-        return rewritten
 
-    def extract_choicevars(
-        self, rewritten: list[ns.SExpression]
-    ) -> list[ns.SExpression]:
+    def extract_choicevars(self) -> list[ns.SExpression]:
         target_vars = sorted(
             {
                 x.symbol
@@ -158,8 +155,6 @@ class PartialAbstraction:
             return ns.SExpression(exp.symbol, children)
 
         self.body = eta_longify(self.body)
-
-        return rewritten
 
     def handle_variables_at_beginning(
         self, rewritten: list[ns.SExpression]
@@ -398,8 +393,8 @@ def compute_abstraction(
     s_exprs = rewritten + [ns.parse_s_expression(x.body) for x in other_abstractions]
 
     s_exprs = partial.handle_rooted_non_eta_long(s_exprs)
-    s_exprs = partial.extract_symvars(s_exprs)
-    s_exprs = partial.extract_choicevars(s_exprs)
+    partial.extract_symvars()
+    partial.extract_choicevars()
     s_exprs = partial.handle_variables_at_beginning(s_exprs)
 
     this_abstr, s_exprs = partial.to_abstraction(s_exprs)
@@ -423,7 +418,7 @@ def is_variable(symbol: str) -> bool:
     """
     Check if the symbol is a variable.
     """
-    return symbol.startswith("%") or symbol.startswith("#") or symbol.startswith("?")
+    return symbol.startswith("#")
 
 
 def compress_stitch(pythons, *, use_symvars=True, **kwargs) -> CompressionResult:
