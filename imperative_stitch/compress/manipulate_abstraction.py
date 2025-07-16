@@ -66,7 +66,11 @@ def abstraction_calls_to_bodies(program, abstractions, *, pragmas=False):
     """
     return map_abstraction_calls(
         program,
-        lambda call: abstractions[call.tag].substitute_body(call.args, pragmas=pragmas),
+        lambda call: (
+            abstractions[call.tag].substitute_body(call.args, pragmas=pragmas)
+            if call.tag in abstractions
+            else call
+        ),
     )
 
 
