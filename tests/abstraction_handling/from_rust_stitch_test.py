@@ -73,9 +73,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        result = self.run_compression_for_testing(
-            code, iterations=1, max_arity=10
-        )
+        result = self.run_compression_for_testing(code, iterations=1, max_arity=10)
         self.assertEqual(
             result.abstractions_python(),
             ["if x > 0:\n    %1 = 2"],
@@ -105,9 +103,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        result = self.run_compression_for_testing(
-            code, iterations=1
-        )
+        result = self.run_compression_for_testing(code, iterations=1)
         self.assertEqual(
             result.abstractions_python(),
             ["%3 + %2 + #0 + %1 + 2 + 3"],
@@ -149,9 +145,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        result = self.run_compression_for_testing(
-            code, iterations=1, max_arity=0
-        )
+        result = self.run_compression_for_testing(code, iterations=1, max_arity=0)
         self.assertEqual(
             result.abstractions_python(),
             ["%3 + %3 + %3 + %2 + %2 + %1"],
@@ -195,9 +189,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        result = self.run_compression_for_testing(
-            code, iterations=2
-        )
+        result = self.run_compression_for_testing(code, iterations=2)
         self.assertEqual(
             result.abstractions_python(),
             [
@@ -248,9 +240,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        result = self.run_compression_for_testing(
-            code, iterations=1
-        )
+        result = self.run_compression_for_testing(code, iterations=1)
         [abstraction_text] = result.abstractions_python()
         [abstr] = result.abstractions
         self.assertEqual(
@@ -307,9 +297,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        result = self.run_compression_for_testing(
-            code, iterations=1
-        )
+        result = self.run_compression_for_testing(code, iterations=1)
         [abstraction_text] = result.abstractions_python()
         [abstr] = result.abstractions
         self.assertEqual(
@@ -374,9 +362,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        result = self.run_compression_for_testing(
-            code, iterations=1, max_arity=10
-        )
+        result = self.run_compression_for_testing(code, iterations=1, max_arity=10)
         [abstraction_text] = result.abstractions_python()
         [abstr] = result.abstractions
         self.assertEqual(
@@ -449,9 +435,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        result = self.run_compression_for_testing(
-            code, iterations=1, max_arity=10
-        )
+        result = self.run_compression_for_testing(code, iterations=1, max_arity=10)
         [abstraction_text] = result.abstractions_python()
         [abstr] = result.abstractions
         self.assertEqual(
@@ -516,7 +500,9 @@ class TestConversion(unittest.TestCase):
         ]
         result = self.run_compression_for_testing(code, iterations=1, max_arity=3)
         self.maxDiff = None
-        rewritten_raw = [ns.render_s_expression(x.to_ns_s_exp()) for x in result.rewritten]
+        rewritten_raw = [
+            ns.render_s_expression(x.to_ns_s_exp()) for x in result.rewritten
+        ]
         [abstraction_text] = result.abstractions_python()
         [abstr] = result.abstractions
         self.assertEqual(
@@ -585,9 +571,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        result = self.run_compression_for_testing(
-            code, iterations=1, max_arity=10
-        )
+        result = self.run_compression_for_testing(code, iterations=1, max_arity=10)
         [abstraction_text] = result.abstractions_python()
         [abstr] = result.abstractions
         self.assertEqual(
@@ -661,9 +645,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        result = self.run_compression_for_testing(
-            code, iterations=1, max_arity=10
-        )
+        result = self.run_compression_for_testing(code, iterations=1, max_arity=10)
         [abstraction_text] = result.abstractions_python()
         [abstr] = result.abstractions
         self.assertEqual(
@@ -733,9 +715,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        result = self.run_compression_for_testing(
-            code, iterations=1, max_arity=10
-        )
+        result = self.run_compression_for_testing(code, iterations=1, max_arity=10)
         [abstraction_text] = result.abstractions_python()
         [abstr] = result.abstractions
         self.assertEqual(
@@ -795,9 +775,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        result = self.run_compression_for_testing(
-            code, iterations=1, max_arity=10
-        )
+        result = self.run_compression_for_testing(code, iterations=1, max_arity=10)
         for x in [ns.render_s_expression(x.to_ns_s_exp()) for x in result.rewritten]:
             self.assertNotIn("(/seq (/seq", x)
 
@@ -1028,9 +1006,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        result = self.run_compression_for_testing(
-            code, iterations=3, max_arity=10
-        )
+        result = self.run_compression_for_testing(code, iterations=3, max_arity=10)
         self.assertEqual(result.rewritten_python(), code)
 
     def test_empty_exception(self):
@@ -1044,9 +1020,7 @@ class TestConversion(unittest.TestCase):
                 """
             )
         ]
-        result = self.run_compression_for_testing(
-            code, iterations=3, max_arity=10
-        )
+        result = self.run_compression_for_testing(code, iterations=3, max_arity=10)
         self.assertEqual(code, result.rewritten_python())
 
     def test_nested_abstractions_multiused(self):
@@ -1065,9 +1039,7 @@ class TestConversion(unittest.TestCase):
                 """
             ),
         ]
-        result = self.run_compression_for_testing(
-            code, iterations=2, max_arity=2
-        )
+        result = self.run_compression_for_testing(code, iterations=2, max_arity=2)
         [a1, a2] = result.abstractions_python()
         self.assertEqual(
             a1,
@@ -1091,6 +1063,50 @@ class TestConversion(unittest.TestCase):
                 canonicalize(
                     """
                     fn_0(__code__('3'), __code__('a'))
+                    fn_1(__code__('c'))
+                    """
+                ),
+                canonicalize(
+                    """
+                    fn_1(__code__('e'))
+                    fn_1(__code__('g'))
+                    """
+                ),
+            ],
+        )
+
+    def test_nested_abstractions_inline_one(self):
+        code = [
+            canonicalize(
+                """
+                func(a + a + 3)
+                func(c + c + 0)
+                """
+            ),
+            canonicalize(
+                """
+                func(e + e + 0)
+                func(g + g + 0)
+                """
+            ),
+        ]
+        result = self.run_compression_for_testing(code, iterations=2, max_arity=2)
+        result_no_fn_0 = result.inline_abstractions(abstraction_names=["fn_0"])
+        [a2] = result_no_fn_0.abstractions_python()
+        self.assertEqual(
+            a2,
+            dedent(
+                """
+                func(#0 + #0 + 0)
+                """
+            ).strip(),
+        )
+        self.assertEqual(
+            result_no_fn_0.rewritten_python(),
+            [
+                canonicalize(
+                    """
+                    func(a + a + 3)
                     fn_1(__code__('c'))
                     """
                 ),

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import List
 
 import neurosym as ns
@@ -109,6 +109,9 @@ class Abstraction:
         assert self.choice_arity == len(self.dfa_choicevars)
 
         assert isinstance(self.body, ns.PythonAST), self.body
+
+    def map_body(self, fn):
+        return replace(self, body=fn(self.body))
 
     def process_arguments(self, arguments):
         """
