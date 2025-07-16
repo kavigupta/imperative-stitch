@@ -84,7 +84,6 @@ def abstraction_calls_to_bodies_recursively(program, abstractions, *, pragmas=Fa
         done = True
 
         def callback(call):
-            print(call)
             nonlocal done
             done = False
 
