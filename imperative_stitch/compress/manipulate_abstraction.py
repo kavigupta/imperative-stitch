@@ -34,11 +34,9 @@ def map_abstraction_calls(program, replace_fn):
     """
     Map each abstraction call through the given function.
     """
-    handle_to_replacement = collect_abstraction_calls(program)
-    handle_to_replacement = {
-        handle: replace_fn(call) for handle, call in handle_to_replacement.items()
-    }
-    return replace_abstraction_calls(program, handle_to_replacement)
+    return program.map(
+        lambda x: (replace_fn(x) if isinstance(x, AbstractionCallAST) else x)
+    )
 
 
 def abstraction_calls_to_stubs(program, abstractions, *, is_pythonm=False):
@@ -80,7 +78,10 @@ def abstraction_calls_to_bodies_recursively(program, abstractions, *, pragmas=Fa
     Replace all abstraction calls with their bodies, recursively.
     """
     result = program
-    while True:
+    # We will keep iterating until we reach a fixed point.
+    # This is necessary because the bodies may contain more abstraction calls.
+    # This is a sufficient number of iterations, since each abstraction call is rendered when ruig str()
+    for _ in range(len(str(program))):
         done = True
 
         def callback():
@@ -92,3 +93,5 @@ def abstraction_calls_to_bodies_recursively(program, abstractions, *, pragmas=Fa
         )
         if done:
             return result
+
+    raise RuntimeError("Abstraction calls to bodies recursively did not converge")
