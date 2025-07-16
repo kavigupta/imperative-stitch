@@ -5,7 +5,6 @@ import neurosym as ns
 
 from imperative_stitch.compress.manipulate_abstraction import (
     abstraction_calls_to_bodies_recursively,
-    abstraction_calls_to_stubs,
 )
 from imperative_stitch.compress.rust_stitch import compress_stitch, handle_splice_seqs
 from tests.utils import canonicalize, expand_with_slow_tests, small_set_examples
@@ -19,33 +18,22 @@ class TestConversion(unittest.TestCase):
 
     def run_compression_for_testing(self, code, *, is_pythonm=False, **kwargs):
         result = compress_stitch(code, **kwargs)
-        abstr_dict = {x.name: x for x in result.abstractions}
-        abstractions = [
-            abstraction_calls_to_stubs(
-                x.body_with_variable_names(), abstr_dict, is_pythonm=is_pythonm
-            )
-            for x in result.abstractions
-        ]
-        rewritten = result.rewritten
-        inlined = [
-            canonicalize(
-                abstraction_calls_to_bodies_recursively(program, abstr_dict).to_python()
-            )
-            for program in rewritten
-        ]
         maxDiff, self.maxDiff = self.maxDiff, None
-        self.assertEqual([canonicalize(x) for x in code], inlined)
+        self.assertEqual(
+            [canonicalize(x) for x in code],
+            [
+                canonicalize(x.to_python())
+                for x in result.inline_abstractions(
+                    abstraction_names=result.abstr_dict.keys()
+                ).rewritten
+            ],
+        )
         self.maxDiff = maxDiff
-        rewritten = [
-            abstraction_calls_to_stubs(x, abstr_dict, is_pythonm=is_pythonm)
-            for x in rewritten
-        ]
-        rewritten = [x.to_python() for x in rewritten]
         return (
             result.abstractions,
             [ns.render_s_expression(x.to_ns_s_exp()) for x in result.rewritten],
-            [x.to_python() for x in abstractions],
-            rewritten,
+            result.abstractions_python(is_pythonm=is_pythonm),
+            result.rewritten_python(is_pythonm=is_pythonm),
         )
 
     def test_basic_seq_splice_seq(self):
