@@ -18,6 +18,12 @@ result = run_compression_for_testing(
     use_symvars=False,
 )
 
+result.no_choicevar_abstractions()
+
+result.inline_abstractions(
+    abstraction_names=[x.name for x in result.abstractions if x.dfa_choicevars]
+)
+
 cost_fn = lambda x: len(tokenizer.encode(x))
 
 result = result.remove_unhelpful_abstractions(is_pythonm=True, cost_fn=cost_fn)
