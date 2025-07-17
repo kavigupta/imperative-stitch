@@ -45,10 +45,29 @@ class Arguments:
         return cls(metavars, symvars, choicevars)
 
     def render_list(self, *, is_pythonm):
+        if is_pythonm:
+            assert not self.is_multiline(), "Cannot render multiline arguments"
         return (
             [render_codevar(x, is_pythonm=is_pythonm) for x in self.metavars]
             + [render_symvar(x, is_pythonm=is_pythonm) for x in self.symvars]
             + [render_codevar(x, is_pythonm=is_pythonm) for x in self.choicevars]
+        )
+
+    def is_multiline(self):
+        """
+        Check if any of the arguments are multiline.
+        """
+        return (
+            any(
+                isinstance(x, ns.SequenceAST) and x.is_multiline()
+                for x in self.choicevars
+            )
+            or any(
+                isinstance(x, ns.PythonAST) and x.is_multiline() for x in self.metavars
+            )
+            or any(
+                isinstance(x, ns.PythonAST) and x.is_multiline() for x in self.symvars
+            )
         )
 
 
@@ -154,6 +173,13 @@ class Abstraction:
             )
         assert self.dfa_root == "seqS"
         return ns.SequenceAST("/seq", [start_pragma, *body.elements, end_pragma])
+
+    def multiline_arguments(self, arguments):
+        """
+        Check if the arguments are multiline.
+        """
+        arguments = self.process_arguments(arguments)
+        return arguments.is_multiline()
 
     def substitute_body(self, arguments, *, pragmas=False):
         """
