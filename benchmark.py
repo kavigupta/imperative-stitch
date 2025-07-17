@@ -15,22 +15,15 @@ result = run_compression_for_testing(
     max_arity=4,
     silent=False,
     verbose_best=True,
-    is_pythonm=True,
     use_symvars=False,
 )
 
 cost_fn = lambda x: len(tokenizer.encode(x))
 
-cost = sum(cost_fn(x) for x in code)
-
-for abstr in result.abstractions:
-    print("Trying", abstr.name)
-    result2 = result.inline_abstractions(abstraction_names=[abstr.name])
-    cost2 = sum(cost_fn(x) for x in result2.rewritten_python(is_pythonm=True))
-    if cost2 < cost:
-        print("Removed", abstr.name, "Saved", cost - cost2)
-        result = result2
-        cost = cost2
+result = result.remove_unhelpful_abstractions(
+    is_pythonm=True,
+    cost_fn=cost_fn,
+)
 
 print(sum(len(tokenizer.encode(x)) for x in code))
 print(sum(len(tokenizer.encode(x)) for x in result.rewritten_python(is_pythonm=True)))

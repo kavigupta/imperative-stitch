@@ -65,3 +65,22 @@ class CompressionResult:
             abstractions=new_abstractions,
             rewritten=new_rewritten,
         )
+
+    def remove_unhelpful_abstractions(self, *, is_pythonm, cost_fn):
+        """
+        Remove abstractions that do not help in reducing the cost.
+        """
+        current = self
+        cost = sum(cost_fn(x) for x in current.rewritten_python(is_pythonm=is_pythonm))
+        for abstr in current.abstractions:
+            new = current.inline_abstractions(abstraction_names=[abstr.name])
+            new_cost = sum(
+                cost_fn(x) for x in new.rewritten_python(is_pythonm=is_pythonm)
+            )
+            if new_cost < cost:
+                print(
+                    f"Removed {abstr.name}, saved {cost - new_cost} tokens."
+                )
+                current = new
+                cost = new_cost
+        return current
