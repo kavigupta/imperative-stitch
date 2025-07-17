@@ -78,9 +78,7 @@ class CompressionResult:
                 cost_fn(x) for x in new.rewritten_python(is_pythonm=is_pythonm)
             )
             if new_cost < cost:
-                print(
-                    f"Removed {abstr.name}, saved {cost - new_cost} tokens."
-                )
+                print(f"Removed {abstr.name}, saved {cost - new_cost} tokens.")
                 current = new
                 cost = new_cost
         return current
