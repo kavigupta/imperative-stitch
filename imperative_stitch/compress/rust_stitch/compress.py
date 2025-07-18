@@ -4,11 +4,40 @@ from functools import lru_cache
 
 import neurosym as ns
 import stitch_core
+from permacache import permacache, stable_hash
 
 from imperative_stitch.compress.rust_stitch.compression_result import CompressionResult
 from imperative_stitch.compress.rust_stitch.process_rust_stitch import (
     process_rust_stitch,
 )
+
+
+@permacache(
+    "imperative_stitch/compress/rust_stitch/cached_stitch_core",
+    key_function=dict(s_exps=stable_hash),
+)
+def cached_stitch_core(
+    s_exps,
+    *,
+    cost_prim,
+    tdfa_root,
+    valid_metavars,
+    valid_roots,
+    tdfa_non_eta_long_states,
+    tdfa_split,
+    **kwargs
+):
+    return stitch_core.compress(
+        s_exps,
+        cost_prim=json.dumps(cost_prim).replace(" ", ""),
+        tdfa_json_path=dfa_path(),
+        tdfa_root=tdfa_root,
+        valid_metavars=valid_metavars,
+        valid_roots=valid_roots,
+        tdfa_non_eta_long_states=tdfa_non_eta_long_states,
+        tdfa_split=tdfa_split,
+        **kwargs,
+    )
 
 
 def compress_stitch(pythons, *, use_symvars=True, **kwargs) -> CompressionResult:
@@ -53,10 +82,9 @@ def compress_stitch(pythons, *, use_symvars=True, **kwargs) -> CompressionResult
     kwargs = kwargs.copy()
     if use_symvars:
         kwargs["symvar_prefix"] = "&"
-    compressed = stitch_core.compress(
+    compressed = cached_stitch_core(
         s_exps,
-        cost_prim=json.dumps(cost_prim).replace(" ", ""),
-        tdfa_json_path=dfa_path(),
+        cost_prim=cost_prim,
         tdfa_root="M",
         valid_metavars='["S","E","seqS"]',
         valid_roots='["S","E","seqS"]',
