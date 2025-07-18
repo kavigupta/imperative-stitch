@@ -3,8 +3,8 @@ import tempfile
 from functools import lru_cache
 
 import neurosym as ns
-from permacache import permacache, stable_hash
 import stitch_core
+from permacache import permacache, stable_hash
 
 from imperative_stitch.compress.rust_stitch.compression_result import CompressionResult
 from imperative_stitch.compress.rust_stitch.process_rust_stitch import (
