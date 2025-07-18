@@ -51,23 +51,6 @@ class Arguments:
             + [render_codevar(x, is_pythonm=is_pythonm) for x in self.choicevars]
         )
 
-    def is_multiline(self):
-        """
-        Check if any of the arguments are multiline.
-        """
-        return (
-            any(
-                isinstance(x, ns.SequenceAST) and x.is_multiline()
-                for x in self.choicevars
-            )
-            or any(
-                isinstance(x, ns.PythonAST) and x.is_multiline() for x in self.metavars
-            )
-            or any(
-                isinstance(x, ns.PythonAST) and x.is_multiline() for x in self.symvars
-            )
-        )
-
 
 @dataclass
 class Abstraction:
@@ -145,11 +128,6 @@ class Abstraction:
             where the metavariables and choice variables are __code__, and the symbol
             variables are __ref__.
         """
-        if is_pythonm:
-            assert not any(
-                x.is_multiline() for x in arguments
-            ), f"Cannot render multiline arguments: in call {self.create_stub(arguments, is_pythonm=False).to_python()}"
-
         arguments = self.process_arguments(arguments)
         args_list = arguments.render_list(is_pythonm=is_pythonm)
         e_stub = ns.make_python_ast.make_call(
@@ -176,13 +154,6 @@ class Abstraction:
             )
         assert self.dfa_root == "seqS"
         return ns.SequenceAST("/seq", [start_pragma, *body.elements, end_pragma])
-
-    def multiline_arguments(self, arguments):
-        """
-        Check if the arguments are multiline.
-        """
-        arguments = self.process_arguments(arguments)
-        return arguments.is_multiline()
 
     def substitute_body(self, arguments, *, pragmas=False):
         """
