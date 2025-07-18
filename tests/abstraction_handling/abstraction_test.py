@@ -170,12 +170,42 @@ class AbstractionRenderingTest(unittest.TestCase):
             """,
         )
 
-        stub = fn_2.create_stub(fn_2_args, is_pythonm=True)
+        stub = fn_2.create_stub(
+            fn_2_args_w_nothing[:-1]
+            + [ns.python_statements_to_python_ast("x = 2 if 3 else 9")],
+            is_pythonm=True,
+        )
         assertSameCode(
             self,
             stub.to_python(),
             """
-            fn_2(`print(2)`, &c, &a, &b, &d, `if x == 3:\\n    pass`)
+            fn_2(`print(2)`, &c, &a, &b, &d, `x = 2 if 3 else 9`)
+            """,
+        )
+
+        stub = fn_2.create_stub(
+            fn_2_args_w_nothing[:-1]
+            + [ns.python_statements_to_python_ast("x = 'abc'")],
+            is_pythonm=True,
+        )
+        assertSameCode(
+            self,
+            stub.to_python(),
+            """
+            fn_2(`print(2)`, &c, &a, &b, &d, `x = 'abc'`)
+            """,
+        )
+
+        stub = fn_2.create_stub(
+            fn_2_args_w_nothing[:-1]
+            + [ns.python_statements_to_python_ast(r"x = '\'abc\''")],
+            is_pythonm=True,
+        )
+        assertSameCode(
+            self,
+            stub.to_python(),
+            """
+            fn_2(`print(2)`, &c, &a, &b, &d, `x = "'abc'"`)
             """,
         )
 

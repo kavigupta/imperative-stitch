@@ -23,6 +23,9 @@ class Variable(ns.PythonAST):
             return ns.SExpression("var-" + self.sym, [])
         return self.sym
 
+    def is_multiline(self):
+        return False
+
 
 @dataclass
 class SymvarAST(Variable):
@@ -73,3 +76,12 @@ class AbstractionCallAST(ns.PythonAST):
         # all we are doing is replacing the handle with a new one, so that we can
         # distinguish between different calls to the same abstraction
         return type(self)(self.tag, self.args, uuid.uuid4())
+
+    def is_multiline(self):
+        # In any context where this is used, it is not multiline.
+        # This is because it is a call to an abstraction, which is always a single line
+        # Any code is going to be made single line in the process of serialization.
+        return False
+
+    def some_argument_is_multiline(self):
+        return any(x.is_multiline() for x in self.args)

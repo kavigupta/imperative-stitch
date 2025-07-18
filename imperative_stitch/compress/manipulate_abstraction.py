@@ -95,3 +95,18 @@ def abstraction_calls_to_bodies_recursively(program, abstractions, *, pragmas=Fa
             return result
 
     raise RuntimeError("Abstraction calls to bodies recursively did not converge")
+
+
+def inline_multiline_calls(program, abstractions):
+    """
+    Inline all multiline calls in the program.
+    This is a special case where we want to inline the calls that are
+    multiline, i.e., they have a body that is a sequence of statements.
+    """
+
+    def mapping(node):
+        if isinstance(node, AbstractionCallAST) and node.some_argument_is_multiline():
+            return abstractions[node.tag].substitute_body(node.args, pragmas=False)
+        return node
+
+    return program.map(mapping)
