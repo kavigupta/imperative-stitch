@@ -20,6 +20,7 @@ result = run_compression_for_testing(
 
 cost_fn = lambda x: len(tokenizer.encode(x))
 
+result = result.inline_multiline_calls()
 result = result.remove_unhelpful_abstractions(is_pythonm=True, cost_fn=cost_fn)
 
 print(sum(len(tokenizer.encode(x)) for x in code))

@@ -82,3 +82,6 @@ class AbstractionCallAST(ns.PythonAST):
         # This is because it is a call to an abstraction, which is always a single line
         # Any code is going to be made single line in the process of serialization.
         return False
+
+    def some_argument_is_multiline(self):
+        return any(x.is_multiline() for x in self.args)

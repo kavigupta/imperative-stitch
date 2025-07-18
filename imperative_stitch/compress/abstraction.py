@@ -45,8 +45,6 @@ class Arguments:
         return cls(metavars, symvars, choicevars)
 
     def render_list(self, *, is_pythonm):
-        if is_pythonm:
-            assert not self.is_multiline(), "Cannot render multiline arguments"
         return (
             [render_codevar(x, is_pythonm=is_pythonm) for x in self.metavars]
             + [render_symvar(x, is_pythonm=is_pythonm) for x in self.symvars]
@@ -147,6 +145,11 @@ class Abstraction:
             where the metavariables and choice variables are __code__, and the symbol
             variables are __ref__.
         """
+        if is_pythonm:
+            assert not any(
+                x.is_multiline() for x in arguments
+            ), f"Cannot render multiline arguments: in call {self.create_stub(arguments, is_pythonm=False).to_python()}"
+
         arguments = self.process_arguments(arguments)
         args_list = arguments.render_list(is_pythonm=is_pythonm)
         e_stub = ns.make_python_ast.make_call(

@@ -30,6 +30,7 @@ class TestConversion(unittest.TestCase):
                 ).rewritten
             ],
         )
+        result.inline_multiline_calls().rewritten_python(is_pythonm=True)
         self.maxDiff = maxDiff
         return result
 
