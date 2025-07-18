@@ -27,8 +27,8 @@ class QuotedCodeAST(ns.PythonAST):
         """
         Convert this QuotedCodeAST to a Python code object.
         """
-        code_content = repr(self.content.to_python())
-        code_content = code_content[1:-1]
+        code_content = self.content.to_python()
+        assert "\n" not in code_content, "QuotedCodeAST cannot contain newlines"
         return ast.Name(
             id=f"`{code_content}`",
             kind=None,
@@ -39,6 +39,9 @@ class QuotedCodeAST(ns.PythonAST):
 
     def to_ns_s_exp(self, config=frozendict()):
         return super().to_ns_s_exp(config)
+
+    def is_multiline(self):
+        return self.content.is_multiline()
 
 
 def render_codevar(node, *, is_pythonm):
