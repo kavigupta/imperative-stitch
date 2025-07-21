@@ -60,9 +60,6 @@ class QuotedCodeAST(ns.PythonAST):
     def is_multiline(self):
         return self.content.is_multiline()
 
-    def is_multiline(self):
-        return self.content.is_multiline()
-
 
 def render_codevar(node, *, is_pythonm):
     """
