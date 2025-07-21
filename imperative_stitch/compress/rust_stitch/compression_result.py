@@ -2,11 +2,13 @@ from dataclasses import dataclass
 from typing import List
 
 import neurosym as ns
+import tqdm
 
 from imperative_stitch.compress.abstraction import Abstraction
 from imperative_stitch.compress.manipulate_abstraction import (
     abstraction_calls_to_bodies_recursively,
     abstraction_calls_to_stubs,
+    inline_multiline_calls,
 )
 
 
@@ -44,6 +46,14 @@ class CompressionResult:
             for x in self.rewritten
         ]
 
+    def map_programs(self, fn):
+        new_rewritten = [fn(program) for program in self.rewritten]
+        new_abstractions = [abstr.map_body(fn) for abstr in self.abstractions]
+        return CompressionResult(
+            abstractions=new_abstractions,
+            rewritten=new_rewritten,
+        )
+
     def inline_abstractions(self, *, abstraction_names):
         """
         Inline the abstractions in the rewritten code and remaining abstractions.
@@ -51,19 +61,8 @@ class CompressionResult:
         abstr_dict = self.abstr_dict
         abstr_dict = {name: abstr_dict[name] for name in abstraction_names}
         new_abstractions = [x for x in self.abstractions if x.name not in abstr_dict]
-        new_rewritten = [
-            abstraction_calls_to_bodies_recursively(program, abstr_dict)
-            for program in self.rewritten
-        ]
-        new_abstractions = [
-            abstr.map_body(
-                lambda x: abstraction_calls_to_bodies_recursively(x, abstr_dict)
-            )
-            for abstr in new_abstractions
-        ]
-        return CompressionResult(
-            abstractions=new_abstractions,
-            rewritten=new_rewritten,
+        return CompressionResult(new_abstractions, self.rewritten).map_programs(
+            lambda x: abstraction_calls_to_bodies_recursively(x, abstr_dict)
         )
 
     def remove_unhelpful_abstractions(self, *, is_pythonm, cost_fn):
@@ -72,8 +71,12 @@ class CompressionResult:
         """
         current = self
         cost = sum(cost_fn(x) for x in current.rewritten_python(is_pythonm=is_pythonm))
-        for abstr in current.abstractions:
+        for abstr in tqdm.tqdm(
+            current.abstractions, desc="Removing unhelpful abstractions"
+        ):
             new = current.inline_abstractions(abstraction_names=[abstr.name])
+            if is_pythonm:
+                new = new.inline_multiline_calls()
             new_cost = sum(
                 cost_fn(x) for x in new.rewritten_python(is_pythonm=is_pythonm)
             )
@@ -82,3 +85,10 @@ class CompressionResult:
                 current = new
                 cost = new_cost
         return current
+
+    def inline_multiline_calls(self):
+        """
+        Inline multiline calls in the rewritten code.
+        """
+        abstractions = self.abstr_dict
+        return self.map_programs(lambda x: inline_multiline_calls(x, abstractions))
