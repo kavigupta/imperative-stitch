@@ -151,6 +151,11 @@ class AbstractionRenderingTest(unittest.TestCase):
             """,
         )
 
+        self.assertEqual(
+            ns.render_s_expression(stub.to_ns_s_exp()),
+            "(/seq (Expr (Call (Name &fn_1:None Load) (list (Call (Name &__ref__:None Load) (list (Name &a:0 Load)) nil) (Call (Name &__ref__:None Load) (list (Name &z:0 Load)) nil)) nil)))",
+        )
+
         stub = fn_1.create_stub(fn_1_args, is_pythonm=True)
         assertSameCode(
             self,
@@ -170,11 +175,18 @@ class AbstractionRenderingTest(unittest.TestCase):
             """,
         )
 
+        # assert no error
+        ns.render_s_expression(stub.to_ns_s_exp())
+
         stub = fn_2.create_stub(
             fn_2_args_w_nothing[:-1]
             + [ns.python_statements_to_python_ast("x = 2 if 3 else 9")],
             is_pythonm=True,
         )
+
+        # assert no error
+        ns.render_s_expression(stub.to_ns_s_exp())
+
         assertSameCode(
             self,
             stub.to_python(),
