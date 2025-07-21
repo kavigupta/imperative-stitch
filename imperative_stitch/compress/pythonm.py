@@ -1,16 +1,33 @@
 import ast
 from io import BytesIO
-from textwrap import dedent
 import tokenize
 from types import NoneType
-from typing import List, Tuple, Union
+from typing import Dict, List, Tuple, Union
 import uuid
 import neurosym as ns
 
+from imperative_stitch.compress.abstraction import Abstraction
+from imperative_stitch.compress.manipulate_python_ast import AddressOfSymbolAST
 from imperative_stitch.parser.python_ast import AbstractionCallAST
 
 
-def parse_pythonm(code: str) -> ns.PythonAST:
+def parse_with_target_state(code: str, target_state: str) -> ns.PythonAST:
+    if target_state == "M":
+        return ns.python_to_python_ast(code)
+    if target_state == "seqS":
+        return ns.python_statements_to_python_ast(code)
+    if target_state == "S":
+        return ns.python_statement_to_python_ast(code)
+    if target_state == "E":
+        stmt = parse_with_target_state(code, "S")
+        assert isinstance(stmt, ns.NodeAST) and stmt.typ == ast.Expr
+        return stmt.children[0]
+    raise ValueError(f"Unsupported target state: {target_state}")
+
+
+def parse_pythonm(
+    code: str, target_state: str, abstractions: Dict[str, Abstraction]
+) -> ns.PythonAST:
     """
     Parses a PythonM code string into a neurosym PythonAST object.
 
@@ -20,9 +37,9 @@ def parse_pythonm(code: str) -> ns.PythonAST:
     print(code)
     code = replace_pythonm_with_normal_stub(code)
     print(code)
-    code = ns.python_to_python_ast(code)
+    code = parse_with_target_state(code, target_state)
     print(code)
-    return code.map(function_call_to_abstraction_call)
+    return code.map(lambda node: function_call_to_abstraction_call(node, abstractions))
 
 
 def parse_function_call(
@@ -56,7 +73,9 @@ def parse_function_call(
     return func_name.leaf.name, args
 
 
-def function_call_to_abstraction_call(call_node):
+def function_call_to_abstraction_call(
+    call_node, abstractions: Dict[str, Abstraction]
+) -> ns.PythonAST:
     attempt_parse = parse_function_call(call_node, validate=False)
     if attempt_parse is None:
         return call_node
@@ -65,27 +84,31 @@ def function_call_to_abstraction_call(call_node):
     if not func_name.startswith("fn_"):
         return call_node
 
-    args = [extract_pythonm_argument(arg) for arg in args]
+    args = [
+        extract_pythonm_argument(arg, state, abstractions)
+        for arg, state in zip(args, abstractions[func_name].all_argument_states)
+    ]
 
     return AbstractionCallAST(tag=func_name, args=args, handle=uuid.uuid4())
 
 
-def extract_pythonm_argument(arg: ns.PythonAST) -> ns.PythonAST:
+def extract_pythonm_argument(
+    arg: ns.PythonAST, state: str, abstractions: Dict[str, Abstraction]
+) -> ns.PythonAST:
     parsed = parse_function_call(arg, validate=True)
     assert parsed is not None, f"Invalid PythonM argument: {arg}"
     func_name, args = parsed
     assert len(args) == 1, f"PythonM argument should have exactly one argument: {args}"
     arg = args[0]
     if func_name == "__code__":
-        # TODO TODO TODO: handle recursive case, as well as expression/statement distinction
         assert isinstance(arg, ns.NodeAST) and arg.typ == ast.Constant
         arg = arg.children[0].leaf
-        return ns.python_statement_to_python_ast(arg)
+        return parse_pythonm(arg, state, abstractions)
     elif func_name == "__ref__":
         print(arg)
         assert isinstance(arg, ns.NodeAST) and arg.typ == ast.Name
         arg = arg.children[0].leaf
-        return "&" + arg.name
+        return ns.LeafAST(ns.PythonSymbol(arg.name, scope=None))
     else:
         raise ValueError(f"Unknown PythonM function: {func_name} in {arg}")
 

@@ -10,8 +10,7 @@ class AddressOfSymbolAST(ns.PythonAST):
     sym: str
 
     def to_python_ast(self):
-        # ctx does not matter here, so just use Load
-        return ast.Name(id="&" + self.sym, ctx=ast.Load())
+        return "&" + self.sym
 
     def map(self, fn):
         return AddressOfSymbolAST(fn(self.sym))
@@ -29,7 +28,11 @@ def render_symvar(node, *, is_pythonm):
         `a` -> `__ref__(a)`
     """
     if is_pythonm:
-        return AddressOfSymbolAST(node.leaf.name)
+        # ctx does not matter here, so just use Load
+        return ns.NodeAST(
+            typ=ast.Name,
+            children=[AddressOfSymbolAST(node.leaf.name), ns.NodeAST(typ=ast.Load, children=[])],
+        )
     return ns.make_python_ast.make_call(
         ns.PythonSymbol(name="__ref__", scope=None), ns.make_python_ast.make_name(node)
     )

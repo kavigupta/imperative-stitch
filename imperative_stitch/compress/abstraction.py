@@ -110,6 +110,13 @@ class Abstraction:
 
         assert isinstance(self.body, ns.PythonAST), self.body
 
+    @property
+    def all_argument_states(self):
+        """
+        Return a list of all the argument states in the order they appear in the body.
+        """
+        return self.dfa_metavars + self.dfa_symvars + self.dfa_choicevars
+
     def map_body(self, fn):
         return replace(self, body=fn(self.body))
 
