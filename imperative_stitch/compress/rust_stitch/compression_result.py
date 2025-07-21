@@ -4,6 +4,7 @@ from typing import List
 import tqdm
 
 import neurosym as ns
+import tqdm
 
 from imperative_stitch.compress.abstraction import Abstraction
 from imperative_stitch.compress.manipulate_abstraction import (

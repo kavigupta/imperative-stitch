@@ -5,15 +5,31 @@ import neurosym as ns
 from frozendict import frozendict
 
 
+@dataclass
+class AddressOfSymbolAST(ns.PythonAST):
+    sym: str
+
+    def to_python_ast(self):
+        # ctx does not matter here, so just use Load
+        return ast.Name(id="&" + self.sym, ctx=ast.Load())
+
+    def map(self, fn):
+        return AddressOfSymbolAST(fn(self.sym))
+
+    def to_ns_s_exp(self, config=frozendict()):
+        return "&" + self.sym
+
+    def is_multiline(self):
+        return False
+
+
 def render_symvar(node, *, is_pythonm):
     """
     Render this PythonAST as a __ref__ variable for stub display, i.e.,
         `a` -> `__ref__(a)`
     """
     if is_pythonm:
-        return ns.make_python_ast.make_name(
-            ns.LeafAST(leaf=ns.PythonSymbol("&" + node.leaf.name, node.leaf.scope))
-        )
+        return AddressOfSymbolAST(node.leaf.name)
     return ns.make_python_ast.make_call(
         ns.PythonSymbol(name="__ref__", scope=None), ns.make_python_ast.make_name(node)
     )
@@ -31,14 +47,18 @@ class QuotedCodeAST(ns.PythonAST):
         assert "\n" not in code_content, "QuotedCodeAST cannot contain newlines"
         return ast.Name(
             id=f"`{code_content}`",
-            kind=None,
+            # this doesn't actually matter, so just use a dummy context
+            ctx=ast.Load(),
         )
 
     def map(self, fn):
         return QuotedCodeAST(fn(self.content.map(fn)))
 
     def to_ns_s_exp(self, config=frozendict()):
-        return super().to_ns_s_exp(config)
+        return self.content.to_ns_s_exp(config=config)
+
+    def is_multiline(self):
+        return self.content.is_multiline()
 
     def is_multiline(self):
         return self.content.is_multiline()
