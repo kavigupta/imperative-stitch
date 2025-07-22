@@ -1,9 +1,10 @@
 import ast
-from io import BytesIO
 import tokenize
+import uuid
+from io import BytesIO
 from types import NoneType
 from typing import Dict, List, Tuple, Union
-import uuid
+
 import neurosym as ns
 
 from imperative_stitch.compress.abstraction import Abstraction

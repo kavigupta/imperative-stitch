@@ -1,7 +1,7 @@
 import ast
 import json
-from textwrap import dedent
 import unittest
+from textwrap import dedent
 
 import neurosym as ns
 
