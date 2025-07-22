@@ -1,4 +1,6 @@
+import ast
 import json
+from textwrap import dedent
 import unittest
 
 import neurosym as ns
@@ -66,7 +68,7 @@ def assertPythonMParsingWorks(
         testcase, original_code, back_forth_inlined, dfa_root
     )
 
-    testcase.assertEqual(canonicalize(original_code), back_forth_inlined.to_python())
+    testcase.assertEqual(ast.unparse(ast.parse(original_code)), back_forth_inlined.to_python())
 
 
 class TestPythonMParsing(unittest.TestCase):
@@ -153,3 +155,24 @@ class TestPythonMParsing(unittest.TestCase):
         with open("data/vlmaterial-set/human_1000.json", "r") as f:
             programs = json.load(f)
         self.assertParseBasicNoAbstrs(programs[seed])
+
+    def test_multiple_empty_codeblocks(self):
+        self.assertEqual(
+            replace_pythonm_with_normal_stub(
+                "fn_0(&name, &new, ``) + fn_0(&name, &new, ``)"
+            ),
+            "fn_0(__ref__(name), __ref__(new), __code__('')) + fn_0(__ref__(name), __ref__(new), __code__(''))",
+        )
+
+    def test_multiline_strings_with_trailing_spaces(self):
+        code = dedent(
+            '''
+            """
+                abc
+                x
+                def
+            """
+            '''
+        ).replace("x", "")
+
+        assertPythonMParsingWorks(self, code, code, {})

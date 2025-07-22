@@ -34,6 +34,7 @@ class TestConversion(unittest.TestCase):
         result_wo_multi = result.inline_multiline_calls()
         pythonms = result_wo_multi.rewritten_python(is_pythonm=True)
         for original, pythonm in zip(code, pythonms):
+            print(repr(original), repr(pythonm), repr(result_wo_multi.abstr_dict))
             assertPythonMParsingWorks(
                 self, original, pythonm, result_wo_multi.abstr_dict
             )

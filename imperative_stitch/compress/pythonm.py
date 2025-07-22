@@ -150,8 +150,8 @@ def replace_pythonm_with_normal_stub(code):
     last_open = None
     code_blocks = []
     string_replacements = {}
-    for i, tok in enumerate(tokens):
-        print(i, tok)
+    # for i, tok in enumerate(tokens):
+    #     print(i, tok)
     for i, tok in enumerate(tokens):
         if tok.type == tokenize.OP and tok.string == "`":
             if starting_context(tokens[i - 1]):
@@ -168,19 +168,19 @@ def replace_pythonm_with_normal_stub(code):
                 if backtick_depth == 0:
                     if last_open == i - 1:
                         string_replacements[i] = repr("") + ")"
-                        continue
-                    assert last_open is not None, f"Unexpected closing backtick at {i}"
-                    for j in range(last_open + 1, i):
-                        print("J", j, tokens[j])
-                        if j in string_replacements:
-                            del string_replacements[j]
-                    code_blocks.append((last_open + 1, i - 1))
+                    else:
+                        assert last_open is not None, f"Unexpected closing backtick at {i}"
+                        for j in range(last_open + 1, i):
+                            # print("J", j, tokens[j])
+                            if j in string_replacements:
+                                del string_replacements[j]
+                        code_blocks.append((last_open + 1, i - 1))
                     last_open = None
         if tok.type == tokenize.OP and tok.string == "&":
             if starting_context(tokens[i - 1]):
                 string_replacements[i] = "__ref__("
                 string_replacements[i + 1] = tokens[i + 1].string + ")"
-    print("Code blocks", code_blocks)
+    # print("Code blocks", code_blocks)
     return perform_replacements(code, tokens, string_replacements, code_blocks)
 
 
