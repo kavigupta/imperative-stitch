@@ -149,12 +149,11 @@ def extract_pythonm_argument(
         assert isinstance(arg, ns.NodeAST) and arg.typ == ast.Constant
         arg = arg.children[0].leaf
         return parse_pythonm(arg, state, abstractions)
-    elif func_name == "__ref__":
+    if func_name == "__ref__":
         assert isinstance(arg, ns.NodeAST) and arg.typ == ast.Name
         arg = arg.children[0].leaf
         return ns.LeafAST(ns.PythonSymbol(arg.name, scope=None))
-    else:
-        raise ValueError(f"Unknown PythonM function: {func_name} in {arg}")
+    raise ValueError(f"Unknown PythonM function: {func_name} in {arg}")
 
 
 def is_backtick(tok: tokenize.TokenInfo) -> bool:
