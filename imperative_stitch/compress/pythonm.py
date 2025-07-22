@@ -207,6 +207,8 @@ class PythonMStateMachine:
             # special case of ``. We handle this here rather than in the code blocks.
             self.string_replacements[i] = repr("") + ")"
         else:
+            # we use code blocks here because it allows much easier calling of the locations
+            # since we don't actually have indices into the original string at this point.
             for j in range(corresponding_open + 1, i):
                 if j in self.string_replacements:
                     del self.string_replacements[j]
@@ -262,10 +264,6 @@ def perform_replacements(code, tokens, replacements, code_blocks):
 
     characters = list(code)
     for start, end, replacement in replacements_by_range:
-        # if start >= end:
-        #     # insertion
-        #     characters[end] - += replacement
-        #     continue
         assert start < end
         characters[start] = replacement
         for i in range(start + 1, end):
