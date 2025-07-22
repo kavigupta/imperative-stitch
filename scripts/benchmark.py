@@ -25,6 +25,7 @@ result = result.remove_unhelpful_abstractions(is_pythonm=True, cost_fn=cost_fn)
 
 print(sum(len(tokenizer.encode(x)) for x in code))
 print(sum(len(tokenizer.encode(x)) for x in result.rewritten_python(is_pythonm=True)))
+print(sum(len(tokenizer.encode(x)) for x in result.abstractions_python(is_pythonm=True)))
 
 
 for i, abstr in enumerate(result.abstractions_python()):
