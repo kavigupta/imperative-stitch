@@ -156,6 +156,13 @@ def extract_pythonm_argument(
         raise ValueError(f"Unknown PythonM function: {func_name} in {arg}")
 
 
+def is_backtick(tok: tokenize.TokenInfo) -> bool:
+    """
+    Check if the token is a backtick.
+    """
+    return tok.type in {tokenize.OP, tokenize.ERRORTOKEN} and tok.string == "`"
+
+
 def replace_pythonm_with_normal_stub(code):
     tokens = list(tokenize.tokenize(BytesIO(code.encode("utf-8")).readline))
     backtick_depth = 0
@@ -165,8 +172,8 @@ def replace_pythonm_with_normal_stub(code):
     # for i, tok in enumerate(tokens):
     #     print(i, tok)
     for i, tok in enumerate(tokens):
-        if tok.type == tokenize.OP and tok.string == "`":
-            if starting_context(tokens[i - 1]):
+        if is_backtick(tok):
+            if starting_context(tokens, i - 1):
                 if backtick_depth == 0:
                     assert (
                         last_open is None
@@ -175,6 +182,7 @@ def replace_pythonm_with_normal_stub(code):
                 backtick_depth += 1
                 string_replacements[i] = "__code__("
             else:
+                assert backtick_depth > 0, f"Unexpected closing backtick at {i}"
                 backtick_depth -= 1
                 string_replacements[i] = ")"
                 if backtick_depth == 0:
@@ -191,10 +199,11 @@ def replace_pythonm_with_normal_stub(code):
                         code_blocks.append((last_open + 1, i - 1))
                     last_open = None
         if tok.type == tokenize.OP and tok.string == "&":
-            if starting_context(tokens[i - 1]):
+            if starting_context(tokens, i - 1):
                 string_replacements[i] = "__ref__("
                 string_replacements[i + 1] = tokens[i + 1].string + ")"
     # print("Code blocks", code_blocks)
+    assert backtick_depth == 0, f"Unclosed backticks at the end: {backtick_depth}"
     return perform_replacements(code, tokens, string_replacements, code_blocks)
 
 
@@ -243,7 +252,11 @@ def perform_replacements(code, tokens, replacements, code_blocks):
     return code
 
 
-def starting_context(tok):
+def starting_context(tokens, loc):
+    # skip whitespace
+    while loc >= 0 and tokens[loc].string.strip() == "":
+        loc -= 1
+    tok = tokens[loc]
     # either ( or ,
     return tok.type == tokenize.OP and tok.string in ("(", ",")
 
