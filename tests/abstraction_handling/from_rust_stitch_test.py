@@ -9,6 +9,7 @@ from imperative_stitch.compress.rust_stitch import compress_stitch
 from imperative_stitch.compress.rust_stitch.process_rust_stitch import (
     handle_splice_seqs,
 )
+from tests.abstraction_handling.pythonm_parsing_test import assertPythonMParsingWorks
 from tests.utils import canonicalize, expand_with_slow_tests, small_set_examples
 
 
@@ -30,7 +31,12 @@ class TestConversion(unittest.TestCase):
                 ).rewritten
             ],
         )
-        result.inline_multiline_calls().rewritten_python(is_pythonm=True)
+        result_wo_multi = result.inline_multiline_calls()
+        pythonms = result_wo_multi.rewritten_python(is_pythonm=True)
+        for original, pythonm in zip(code, pythonms):
+            assertPythonMParsingWorks(
+                self, original, pythonm, result_wo_multi.abstr_dict
+            )
         self.maxDiff = maxDiff
         return result
 
