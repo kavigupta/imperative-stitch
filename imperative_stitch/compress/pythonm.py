@@ -1,4 +1,5 @@
 import ast
+from dataclasses import dataclass, field
 import tokenize
 import uuid
 from io import BytesIO
@@ -163,48 +164,69 @@ def is_backtick(tok: tokenize.TokenInfo) -> bool:
     return tok.type in {tokenize.OP, tokenize.ERRORTOKEN} and tok.string == "`"
 
 
-def replace_pythonm_with_normal_stub(code):
-    tokens = list(tokenize.tokenize(BytesIO(code.encode("utf-8")).readline))
-    backtick_depth = 0
-    last_open = None
-    code_blocks = []
-    string_replacements = {}
-    # for i, tok in enumerate(tokens):
-    #     print(i, tok)
-    for i, tok in enumerate(tokens):
+@dataclass
+class PythonMStateMachine:
+    tokens: List[tokenize.TokenInfo]
+    backtick_depth: int = 0
+    open_locs: List[int] = field(default_factory=list)
+    code_blocks: List[Tuple[int, int]] = field(default_factory=list)
+    string_replacements: Dict[int, str] = field(default_factory=dict)
+
+    @classmethod
+    def from_code(cls, code: str):
+        tokens = list(tokenize.tokenize(BytesIO(code.encode("utf-8")).readline))
+        return cls(tokens)
+
+    def process_token(self, i):
+        tok = self.tokens[i]
         if is_backtick(tok):
-            if starting_context(tokens, i - 1):
-                if backtick_depth == 0:
-                    assert (
-                        last_open is None
-                    ), f"Unexpected backtick without closing at {i}"
-                    last_open = i
-                backtick_depth += 1
-                string_replacements[i] = "__code__("
+            if starting_context(self.tokens, i - 1):
+                self.process_opening_backick(i)
             else:
-                assert backtick_depth > 0, f"Unexpected closing backtick at {i}"
-                backtick_depth -= 1
-                string_replacements[i] = ")"
-                if backtick_depth == 0:
-                    if last_open == i - 1:
-                        string_replacements[i] = repr("") + ")"
-                    else:
-                        assert (
-                            last_open is not None
-                        ), f"Unexpected closing backtick at {i}"
-                        for j in range(last_open + 1, i):
-                            # print("J", j, tokens[j])
-                            if j in string_replacements:
-                                del string_replacements[j]
-                        code_blocks.append((last_open + 1, i - 1))
-                    last_open = None
+                self.process_closing_backick(i)
         if tok.type == tokenize.OP and tok.string == "&":
-            if starting_context(tokens, i - 1):
-                string_replacements[i] = "__ref__("
-                string_replacements[i + 1] = tokens[i + 1].string + ")"
-    # print("Code blocks", code_blocks)
-    assert backtick_depth == 0, f"Unclosed backticks at the end: {backtick_depth}"
-    return perform_replacements(code, tokens, string_replacements, code_blocks)
+            if starting_context(self.tokens, i - 1):
+                self.string_replacements[i] = "__ref__("
+                self.string_replacements[i + 1] = self.tokens[i + 1].string + ")"
+
+    def process_opening_backick(self, i):
+        if self.backtick_depth == 0:
+            self.open_locs.append(i)
+        self.backtick_depth += 1
+        self.string_replacements[i] = "__code__("
+
+    def process_closing_backick(self, i):
+        assert self.backtick_depth > 0, f"Unexpected closing backtick at {i}"
+        self.backtick_depth -= 1
+        self.string_replacements[i] = ")"
+        if self.backtick_depth != 0:
+            # If we are still inside backticks, just return. We will handle this in a recursive case.
+            return
+        corresponding_open = self.open_locs.pop()
+        if corresponding_open == i - 1:
+            # special case of ``. We handle this here rather than in the code blocks.
+            self.string_replacements[i] = repr("") + ")"
+        else:
+            for j in range(corresponding_open + 1, i):
+                if j in self.string_replacements:
+                    del self.string_replacements[j]
+            self.code_blocks.append((corresponding_open + 1, i - 1))
+
+    def process(self):
+        """
+        Process the tokens and replace backticks and & with the appropriate PythonM syntax.
+        """
+        for i in range(len(self.tokens)):
+            self.process_token(i)
+
+        assert (
+            self.backtick_depth == 0
+        ), f"Unclosed backticks at the end: {self.backtick_depth}"
+        return self.tokens, self.string_replacements, self.code_blocks
+
+
+def replace_pythonm_with_normal_stub(code):
+    return perform_replacements(code, *PythonMStateMachine.from_code(code).process())
 
 
 def perform_replacements(code, tokens, replacements, code_blocks):
@@ -259,8 +281,3 @@ def starting_context(tokens, loc):
     tok = tokens[loc]
     # either ( or ,
     return tok.type == tokenize.OP and tok.string in ("(", ",")
-
-
-def ending_context(tok):
-    # either ) or ,
-    return tok.type == tokenize.OP and tok.string in (")", ",")
