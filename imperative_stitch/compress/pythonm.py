@@ -51,6 +51,14 @@ def convert_all_calls_to_abstractions(code, abstractions):
         if isinstance(node, AbstractionCallAST):
             if get_root_state(node) == "E":
                 del existing_calls[node.handle]
+            for arg, state in zip(
+                node.args, abstractions[node.tag].all_argument_states
+            ):
+                if not isinstance(arg, AbstractionCallAST):
+                    continue
+                assert state == get_root_state(arg)
+                if arg.handle in existing_calls:
+                    del existing_calls[arg.handle]
             return node
         if isinstance(node, ns.NodeAST) and node.typ == ast.Expr:
             expr = node.children[0]
@@ -70,7 +78,7 @@ def convert_all_calls_to_abstractions(code, abstractions):
     if not existing_calls:
         return result
     raise ValueError(
-        f"Failed to convert all calls to abstractions. Remaining calls: {existing_calls}"
+        f"Failed to convert all calls to abstractions. Remaining calls: {existing_calls.keys()}; abstractions: {abstractions}"
     )
 
 
@@ -169,7 +177,9 @@ def replace_pythonm_with_normal_stub(code):
                     if last_open == i - 1:
                         string_replacements[i] = repr("") + ")"
                     else:
-                        assert last_open is not None, f"Unexpected closing backtick at {i}"
+                        assert (
+                            last_open is not None
+                        ), f"Unexpected closing backtick at {i}"
                         for j in range(last_open + 1, i):
                             # print("J", j, tokens[j])
                             if j in string_replacements:

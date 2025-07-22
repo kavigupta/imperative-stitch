@@ -5,6 +5,7 @@ import unittest
 
 import neurosym as ns
 
+from imperative_stitch.compress.abstraction import Abstraction
 from imperative_stitch.compress.manipulate_abstraction import (
     abstraction_calls_to_bodies_recursively,
 )
@@ -16,6 +17,7 @@ from imperative_stitch.compress.pythonm import (
 from imperative_stitch.compress.rust_stitch.process_rust_stitch import (
     handle_splice_seqs,
 )
+from imperative_stitch.parser import converter
 from tests.utils import canonicalize, expand_with_slow_tests, small_set_examples
 
 from .abstraction_test import assertSameCode, fn_2, fn_2_args_w_nothing
@@ -64,11 +66,13 @@ def assertPythonMParsingWorks(
         stub_back_forth, abstractions
     )
 
+    testcase.assertEqual(
+        ast.unparse(ast.parse(original_code)), back_forth_inlined.to_python()
+    )
+
     assertSameSExprUpToSymbolScopes(
         testcase, original_code, back_forth_inlined, dfa_root
     )
-
-    testcase.assertEqual(ast.unparse(ast.parse(original_code)), back_forth_inlined.to_python())
 
 
 class TestPythonMParsing(unittest.TestCase):
@@ -164,6 +168,12 @@ class TestPythonMParsing(unittest.TestCase):
             "fn_0(__ref__(name), __ref__(new), __code__('')) + fn_0(__ref__(name), __ref__(new), __code__(''))",
         )
 
+    def test_quoted_argument(self):
+        self.assertEqual(
+            replace_pythonm_with_normal_stub("fn_0(`'already in body mode'`)"),
+            "fn_0(__code__(\"'already in body mode'\"))",
+        )
+
     def test_multiline_strings_with_trailing_spaces(self):
         code = dedent(
             '''
@@ -176,3 +186,30 @@ class TestPythonMParsing(unittest.TestCase):
         ).replace("x", "")
 
         assertPythonMParsingWorks(self, code, code, {})
+
+    def test_nested_abstraction_calls(self):
+        abstractions = {
+            "fn_0": Abstraction.of(
+                name="fn_0",
+                body=converter.s_exp_to_python_ast(
+                    "(Raise (Call (Name g_RuntimeError Load) (list (_starred_content #0)) nil) None)"
+                ),
+                dfa_root="S",
+                dfa_metavars=["E"],
+            ),
+            "fn_1": Abstraction.of(
+                name="fn_1",
+                body=converter.s_exp_to_python_ast(
+                    "(If (Compare (Name %1 Load) (list Is) (list (Constant None None))) (/seq #0) (/seq))"
+                ),
+                dfa_root="S",
+                dfa_symvars=["Name"],
+                dfa_metavars=["S"],
+            ),
+        }
+        assertPythonMParsingWorks(
+            self,
+            "if x is None:\n    raise RuntimeError('abc')",
+            "fn_1(`fn_0(`'abc'`)`, &x)",
+            abstractions,
+        )
