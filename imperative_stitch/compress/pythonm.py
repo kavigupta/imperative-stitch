@@ -72,13 +72,17 @@ def convert_all_calls_to_abstractions(code, abstractions):
                 node = ns.SpliceAST(node)
             del existing_calls[expr.handle]
             return node
+        if isinstance(node, ns.SpliceAST):
+            if isinstance(node.content, AbstractionCallAST):
+                assert get_root_state(node.content) == "seqS"
+                del existing_calls[node.content.handle]
         return node
 
     result = code.map(manipulate_call_to_correct_symbol)
     if not existing_calls:
         return result
     raise ValueError(
-        f"Failed to convert all calls to abstractions. Remaining calls: {existing_calls.keys()}; abstractions: {abstractions}"
+        f"Failed to convert all calls to abstractions. Remaining calls: {existing_calls}; abstractions: {abstractions}"
     )
 
 

@@ -213,3 +213,38 @@ class TestPythonMParsing(unittest.TestCase):
             "fn_1(`fn_0(`'abc'`)`, &x)",
             abstractions,
         )
+
+    def test_seqS_argument(self):
+        abstractions = {
+            "fn_1": Abstraction(
+                name="fn_6",
+                body=converter.s_exp_to_python_ast(
+                    "(/seq (Import (list (alias g_bpy None))) (FunctionDef &shader_material:0 (arguments nil (list (arg &material:1 (Attribute (Attribute (Name g_bpy Load) s_types Load) s_Material Load) None)) None nil nil None nil) (/seq ?0) nil None None))"
+                ),
+                arity=0,
+                sym_arity=0,
+                choice_arity=1,
+                dfa_root="seqS",
+                dfa_symvars=[],
+                dfa_metavars=[],
+                dfa_choicevars=["seqS"],
+            ),
+            "fn_2": Abstraction(
+                name="fn_69",
+                body=converter.s_exp_to_python_ast(
+                    "(/seq (/splice (fn_24 #0 #2 #1)) (fn_35 #0 (Name &material_output:1 Load) (Constant i2 None)))"
+                ),
+                arity=3,
+                sym_arity=0,
+                choice_arity=0,
+                dfa_root="seqS",
+                dfa_symvars=[],
+                dfa_metavars=["E", "S", "E"],
+                dfa_choicevars=[],
+            ),
+        }
+        parse_pythonm(
+            """fn_1(`fn_2(`textured_glow_crystal_glass`, `textured_glow_crystal_glass = 2`, `'Textured_Glow_Crystal_Glass'`)`)""",
+            "M",
+            abstractions,
+        )
