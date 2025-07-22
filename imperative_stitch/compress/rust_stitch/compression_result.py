@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 from typing import List
 
-import tqdm
-
 import neurosym as ns
 import tqdm
 
