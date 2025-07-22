@@ -105,7 +105,7 @@ fn_2 = Abstraction.of(
 fn_2_args_w_nothing = [
     converter.s_exp_to_python_ast(x)
     for x in [
-        "(Call (Name g_print Load) (list (Constant i2 None)) nil)",
+        "(Call (Name g_print Load) (list (_starred_content (Constant i2 None))) nil)",
         "&c:0",
         "&a:0",
         "&b:0",

@@ -7,7 +7,7 @@ import uuid
 import neurosym as ns
 
 from imperative_stitch.compress.abstraction import Abstraction
-from imperative_stitch.compress.manipulate_python_ast import AddressOfSymbolAST
+from imperative_stitch.compress.manipulate_abstraction import collect_abstraction_calls
 from imperative_stitch.parser.python_ast import AbstractionCallAST
 
 
@@ -34,12 +34,44 @@ def parse_pythonm(
     See manipulate_python_ast.py for details on how PythonM code is structured, but
     basically there's two additions: &name for symvars and `code` for codevars.
     """
-    print(code)
     code = replace_pythonm_with_normal_stub(code)
-    print(code)
     code = parse_with_target_state(code, target_state)
-    print(code)
-    return code.map(lambda node: function_call_to_abstraction_call(node, abstractions))
+    return convert_all_calls_to_abstractions(code, abstractions)
+
+
+def convert_all_calls_to_abstractions(code, abstractions):
+    code = code.map(lambda node: function_call_to_abstraction_call(node, abstractions))
+    existing_calls = collect_abstraction_calls(code)
+    if not existing_calls:
+        return code
+
+    get_root_state = lambda node: abstractions[node.tag].dfa_root
+
+    def manipulate_call_to_correct_symbol(node):
+        if isinstance(node, AbstractionCallAST):
+            if get_root_state(node) == "E":
+                del existing_calls[node.handle]
+            return node
+        if isinstance(node, ns.NodeAST) and node.typ == ast.Expr:
+            expr = node.children[0]
+            if not isinstance(expr, AbstractionCallAST):
+                return node
+            state = get_root_state(expr)
+            if state not in {"seqS", "S"}:
+                return node
+            node = expr
+            if state == "seqS":
+                node = ns.SpliceAST(node)
+            del existing_calls[expr.handle]
+            return node
+        return node
+
+    result = code.map(manipulate_call_to_correct_symbol)
+    if not existing_calls:
+        return result
+    raise ValueError(
+        f"Failed to convert all calls to abstractions. Remaining calls: {existing_calls}"
+    )
 
 
 def parse_function_call(
@@ -105,7 +137,6 @@ def extract_pythonm_argument(
         arg = arg.children[0].leaf
         return parse_pythonm(arg, state, abstractions)
     elif func_name == "__ref__":
-        print(arg)
         assert isinstance(arg, ns.NodeAST) and arg.typ == ast.Name
         arg = arg.children[0].leaf
         return ns.LeafAST(ns.PythonSymbol(arg.name, scope=None))
@@ -120,6 +151,8 @@ def replace_pythonm_with_normal_stub(code):
     code_blocks = []
     string_replacements = {}
     for i, tok in enumerate(tokens):
+        print(i, tok)
+    for i, tok in enumerate(tokens):
         if tok.type == tokenize.OP and tok.string == "`":
             if starting_context(tokens[i - 1]):
                 if backtick_depth == 0:
@@ -133,22 +166,29 @@ def replace_pythonm_with_normal_stub(code):
                 backtick_depth -= 1
                 string_replacements[i] = ")"
                 if backtick_depth == 0:
+                    if last_open == i - 1:
+                        string_replacements[i] = repr("") + ")"
+                        continue
                     assert last_open is not None, f"Unexpected closing backtick at {i}"
                     for j in range(last_open + 1, i):
+                        print("J", j, tokens[j])
                         if j in string_replacements:
                             del string_replacements[j]
                     code_blocks.append((last_open + 1, i - 1))
                     last_open = None
         if tok.type == tokenize.OP and tok.string == "&":
-            assert starting_context(tokens[i - 1])
-            string_replacements[i] = "__ref__("
-            string_replacements[i + 1] = tokens[i + 1].string + ")"
+            if starting_context(tokens[i - 1]):
+                string_replacements[i] = "__ref__("
+                string_replacements[i + 1] = tokens[i + 1].string + ")"
+    print("Code blocks", code_blocks)
     return perform_replacements(code, tokens, string_replacements, code_blocks)
 
 
 def perform_replacements(code, tokens, replacements, code_blocks):
     """
     Perform the replacements in the code based on the tokens and replacements mapping.
+
+    Code blocks are inclusive in token space.
     """
     code_as_lines = code.split("\n")
     line_offsets = [0]
@@ -171,13 +211,17 @@ def perform_replacements(code, tokens, replacements, code_blocks):
         start, end = get_token_at(i)
         replacements_by_range.append((start, end, replacement))
     for start_tok, end_tok in code_blocks:
+        assert start_tok <= end_tok
         start, end = get_token_at(start_tok)[0], get_token_at(end_tok)[1]
         replacements_by_range.append((start, end, repr(code[start:end])))
-    print(tokens)
-    print(replacements_by_range)
 
     characters = list(code)
     for start, end, replacement in replacements_by_range:
+        # if start >= end:
+        #     # insertion
+        #     characters[end] - += replacement
+        #     continue
+        assert start < end
         characters[start] = replacement
         for i in range(start + 1, end):
             characters[i] = ""

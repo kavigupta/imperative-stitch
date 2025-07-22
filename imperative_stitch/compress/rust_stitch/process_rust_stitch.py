@@ -264,7 +264,7 @@ def handle_splice_seqs_in_list_context(
             splice_child = child.children[0]
             if not isinstance(splice_child, ns.SExpression):
                 splice_child = ns.SExpression(splice_child, ())
-            if splice_child.symbol == "/seq":
+            if splice_child.symbol in ("/seq", "/subseq"):
                 new_children.extend(splice_child.children)
                 continue
             if splice_child.symbol.startswith("fn_"):
@@ -290,7 +290,7 @@ def handle_splice_seqs(s_expr: ns.SExpression) -> ns.SExpression:
     symbol, children = s_expr.symbol, [
         handle_splice_seqs(child) for child in s_expr.children
     ]
-    if symbol == "/seq":
+    if symbol in ("/seq", "/subseq"):
         return ns.SExpression(*handle_splice_seqs_in_list_context(symbol, children))
     return ns.SExpression(symbol, children)
 
