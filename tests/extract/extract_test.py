@@ -1097,6 +1097,49 @@ class ExtractTest(GenericExtractTest):
             self.run_extract(code), (post_extract_expected, post_extracted)
         )
 
+    def test_affects_same_variable(self):
+        code = """
+        def g(x):
+            __start_extract__
+            x = {__metavariable__, __m0, [x]}
+            __end_extract__
+        """
+        post_extract_expected = """
+        def g(x):
+            return __f0(lambda: [x])
+        """
+        post_extracted = """
+        def __f0(__m0):
+            __0 = __m0()
+        """
+        self.assertCodes(
+            self.run_extract(code), (post_extract_expected, post_extracted)
+        )
+
+    def test_temp(self):
+        code = """
+        def f():
+            for (video, subtitles) in subtitles_by_video.iteritems():
+                subtitles = 2
+                __start_extract__
+                {__metavariable__, __m0, subtitles.sort}
+                __end_extract__
+        """
+
+        post_extract_expected = """
+        def f():
+            for (video, subtitles) in subtitles_by_video.iteritems():
+                subtitles = 2
+                __f0(lambda: subtitles.sort(key=lambda s: key_subtitles(s, video, languages, services, order), reverse=True))
+        """
+        post_extracted = """
+        def __f0(__m0):
+            __m0()
+        """
+        self.assertCodes(
+            self.run_extract(code), (post_extract_expected, post_extracted)
+        )
+
 
 class GenericExtractRealisticTest(GenericExtractTest):
     def test_temporary(self):

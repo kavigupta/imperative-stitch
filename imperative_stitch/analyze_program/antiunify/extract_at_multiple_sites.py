@@ -50,11 +50,15 @@ def antiunify_extractions(extrs):
 
     antiunify_returns(extrs)
 
-    codes = set(ast.unparse(extr.func_def) for extr in extrs)
+    codes = {ast.unparse(extr.func_def): extr for extr in extrs}
     if len(codes) != 1:
         print("*" * 80)
         for code in codes:
             print(code)
+            print("=" * 80)
+            print(ast.unparse(ast.Module(body=codes[code].call, type_ignores=[])))
+            print("*" * 80)
+
         raise RuntimeError("not all results are the same")
 
 
